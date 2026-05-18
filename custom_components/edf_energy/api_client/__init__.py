@@ -69,10 +69,31 @@ account_query = '''query {{
           validFrom
           validTo
           tariff {{
-            __typename
-            tariffCode
-            productCode
-            displayName
+            ... on TariffType {{
+              productCode
+              tariffCode
+              displayName
+            }}
+            ... on HalfHourlyTariff {{
+              productCode
+              tariffCode
+              displayName
+            }}
+            ... on DayNightTariff {{
+              productCode
+              tariffCode
+              displayName
+            }}
+            ... on FourRateEvTariff {{
+              productCode
+              tariffCode
+              displayName
+            }}
+            ... on PrepayTariff {{
+              productCode
+              tariffCode
+              displayName
+            }}
           }}
         }}
       }}
@@ -99,8 +120,14 @@ account_query = '''query {{
           validFrom
           validTo
           tariff {{
-            tariffCode
-            productCode
+            ... on TariffType {{
+              tariffCode
+              productCode
+            }}
+            ... on PrepayTariff {{
+              tariffCode
+              productCode
+            }}
           }}
         }}
       }}

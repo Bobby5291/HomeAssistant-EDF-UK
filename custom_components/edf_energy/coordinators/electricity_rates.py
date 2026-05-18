@@ -207,7 +207,7 @@ async def async_setup_electricity_rates_coordinator(hass, account_id: str, targe
         return hass.data[DOMAIN][account_id][key]
 
     coordinator_key = DATA_ELECTRICITY_RATES_COORDINATOR_KEY.format(target_mpan, target_serial_number)
-    hass.data[DOMAIN][account_id][coordinator_key] = DataUpdateCoordinator(
+    coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=key,
@@ -215,3 +215,5 @@ async def async_setup_electricity_rates_coordinator(hass, account_id: str, targe
         update_interval=timedelta(seconds=COORDINATOR_REFRESH_IN_SECONDS),
         always_update=True,
     )
+    hass.data[DOMAIN][account_id][coordinator_key] = coordinator
+    return coordinator

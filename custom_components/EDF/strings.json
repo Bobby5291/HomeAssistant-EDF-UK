@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EDF Energy Account",
+        "description": "Enter your EDF Energy account credentials. You can find your account number in the [EDF Energy app or website]({edf_account_url}).",
+        "data": {
+          "account_id": "Account Number",
+          "email": "Email Address",
+          "password": "Password",
+          "calorific_value": "Calorific Value (for gas kWh calculation)",
+          "supports_live_consumption": "I have a SMETS2 smart meter (enables live consumption sensors)",
+          "live_electricity_consumption_refresh_in_minutes": "Live electricity refresh rate (minutes)",
+          "live_gas_consumption_refresh_in_minutes": "Live gas refresh rate (minutes)"
+        },
+        "data_description": {
+          "account_id": "Your EDF account number (e.g. A-1234567A)",
+          "calorific_value": "Used to convert gas consumption to kWh. Check your bill — usually around 40.0",
+          "supports_live_consumption": "Only enable if you have a SMETS2 smart meter. Enables live demand, current consumption and accumulative cost sensors"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure EDF Energy Account",
+        "description": "Update your EDF Energy credentials.",
+        "data": {
+          "email": "Email Address",
+          "password": "Password",
+          "calorific_value": "Calorific Value",
+          "supports_live_consumption": "I have a SMETS2 smart meter",
+          "live_electricity_consumption_refresh_in_minutes": "Live electricity refresh rate (minutes)",
+          "live_gas_consumption_refresh_in_minutes": "Live gas refresh rate (minutes)"
+        }
+      }
+    },
+    "error": {
+      "email_required": "Email address is required",
+      "password_required": "Password is required",
+      "account_id_required": "Account number is required",
+      "invalid_credentials": "Invalid email or password — please check your EDF Energy login details",
+      "account_not_found": "Account not found — please check your account number",
+      "unknown": "Unexpected error — please check the logs"
+    },
+    "abort": {
+      "already_configured": "This EDF Energy account is already configured"
+    }
+  },
+  "issues": {
+    "invalid_credentials": {
+      "title": "EDF Energy — Invalid Credentials",
+      "description": "Authentication failed for account {account_id}. Please reconfigure the integration with your correct email and password."
+    },
+    "account_not_found": {
+      "title": "EDF Energy — Account Not Found",
+      "description": "Account {account_id} could not be found. Please check your account number and reconfigure."
+    },
+    "no_active_tariff": {
+      "title": "EDF Energy — No Active Tariff",
+      "description": "No active tariff found for {meter_type} meter {mpan_mprn}/{serial_number} on account {account_id}. Rates will not update until a tariff is active."
+    },
+    "tariff_rates_empty": {
+      "title": "EDF Energy — Empty Rates",
+      "description": "No rates returned for tariff {tariff_code} (product {product_code}) on meter {mpan_mprn}/{serial_number} ({meter_type}). This may be temporary — the integration will retry automatically."
+    },
+    "meter_added": {
+      "title": "EDF Energy — New Meter Detected",
+      "description": "A new {meter_type} meter ({mprn_mpan}/{serial_number}) has been detected on account {account_id}. Please restart Home Assistant to register the new sensors."
+    },
+    "meter_removed": {
+      "title": "EDF Energy — Meter Removed",
+      "description": "The {meter_type} meter ({mprn_mpan}/{serial_number}) on account {account_id} is no longer active. You may want to remove associated entities."
+    }
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "domain": "edf_energy",
+  "domain": "EDF",
   "name": "EDF Energy",
   "version": "0.1.0",
   "config_flow": true,

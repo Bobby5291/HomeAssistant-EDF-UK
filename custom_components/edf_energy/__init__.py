@@ -15,7 +15,7 @@ from .coordinators.account import AccountCoordinatorResult, async_setup_account_
 from .coordinators.electricity_rates import async_setup_electricity_rates_coordinator
 from .coordinators.electricity_standing_charges import async_setup_electricity_standing_charges_coordinator
 from .coordinators.current_consumption import async_create_current_consumption_coordinator
-from .coordinators.previous_consumption import async_create_previous_consumption_and_rates_coordinator
+from .coordinators.previous_consumption_and_rates import async_create_previous_consumption_and_rates_coordinator
 
 from .utils import get_active_tariff, get_tariff_parts
 from .utils.error import api_exception_to_string

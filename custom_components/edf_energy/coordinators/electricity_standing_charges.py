@@ -12,6 +12,7 @@ from ..const import (
     DATA_ACCOUNT,
     DATA_CLIENT,
     DATA_ELECTRICITY_STANDING_CHARGE_KEY,
+    DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY,
     DOMAIN,
     REFRESH_RATE_IN_MINUTES_STANDING_CHARGE,
 )
@@ -115,7 +116,7 @@ async def async_setup_electricity_standing_charges_coordinator(hass, account_id:
 
         return hass.data[DOMAIN][account_id][key]
 
-    return DataUpdateCoordinator(
+    coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=key,
@@ -123,3 +124,7 @@ async def async_setup_electricity_standing_charges_coordinator(hass, account_id:
         update_interval=timedelta(seconds=COORDINATOR_REFRESH_IN_SECONDS),
         always_update=True,
     )
+
+    coordinator_key = DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY.format(target_mpan, target_serial_number)
+    hass.data[DOMAIN][account_id][coordinator_key] = coordinator
+    return coordinator

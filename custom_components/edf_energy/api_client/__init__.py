@@ -69,11 +69,10 @@ account_query = '''query {{
           validFrom
           validTo
           tariff {{
-            ... on TariffType {{
-              productCode
-              tariffCode
-              displayName
-            }}
+            __typename
+            tariffCode
+            productCode
+            displayName
           }}
         }}
       }}

@@ -54,6 +54,10 @@ def get_active_tariff(utcnow: datetime, agreements):
     latest_agreement = None
     latest_valid_from = None
 
+    if not agreements:
+        _LOGGER.warning("get_active_tariff called with empty agreements list")
+        return None
+
     for agreement in agreements:
         if agreement["tariff_code"] is None:
             continue

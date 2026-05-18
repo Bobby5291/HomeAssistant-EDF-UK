@@ -2,5 +2,7 @@
   "name": "EDF Energy",
   "content_in_root": false,
   "render_readme": true,
-  "homeassistant": "2026.5.0"
+  "homeassistant": "2026.5.0",
+  "zip_release": true,
+  "filename": "edf_energy.zip"
 }

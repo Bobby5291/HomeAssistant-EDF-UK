@@ -12,8 +12,8 @@ jobs:
 
       - name: Create integration zip
         run: |
-          cd custom_components
-          zip -r ../edf_energy.zip edf_energy/
+          cd custom_components/edf_energy
+          zip -r ../../edf_energy.zip .
 
       - name: Upload zip to release
         uses: softprops/action-gh-release@v2

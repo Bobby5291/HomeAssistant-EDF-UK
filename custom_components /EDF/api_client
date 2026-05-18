@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 # Modified from HomeAssistant-OctopusEnergy by BottlecapDave (MIT)
 # Modified by [your name] [year] — adapted for EDF Energy / Kraken API
 
-user_agent_value = "your-github-name-ha-edf-energy"
+user_agent_value = "Bobby5291-ha-edf-energy"
 
 EDF_BASE_URL = "https://api.edfgb-kraken.energy"
 

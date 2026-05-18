@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 # Modified from HomeAssistant-OctopusEnergy by BottlecapDave (MIT)
 # Modified by [your name] [year] — adapted for EDF Energy / Kraken API
 
-user_agent_value = "Bobby5291-ha-edf-energy"
+user_agent_value = "bobby5291-ha-edf-energy"
 
 EDF_BASE_URL = "https://api.edfgb-kraken.energy"
 
@@ -132,7 +132,6 @@ live_consumption_query = '''query SmartMeterTelemetry(
 }'''
 
 
-user_agent_value = "bobby5291-ha-EDF-UK"
 
 integration_context_header = "Ha-Integration-Context"
 

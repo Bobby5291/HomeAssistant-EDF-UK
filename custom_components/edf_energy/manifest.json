@@ -1,7 +1,7 @@
 {
   "domain": "edf_energy",
   "name": "EDF Energy",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "config_flow": true,
   "documentation": "https://github.com/Bobby5291/ha-edf-energy",
   "issue_tracker": "https://github.com/Bobby5291/ha-edf-energy/issues",

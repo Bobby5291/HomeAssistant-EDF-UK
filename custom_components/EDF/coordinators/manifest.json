@@ -1,0 +1,14 @@
+{
+  "domain": "edf_energy",
+  "name": "EDF Energy",
+  "version": "0.1.0",
+  "config_flow": true,
+  "documentation": "https://github.com/Bobby5291/ha-edf-energy",
+  "issue_tracker": "https://github.com/Bobby5291/ha-edf-energy/issues",
+  "codeowners": ["@Bobby5291"],
+  "requirements": ["aiohttp>=3.8.1"],
+  "dependencies": [],
+  "after_dependencies": ["recorder"],
+  "iot_class": "cloud_polling",
+  "integration_type": "hub"
+}

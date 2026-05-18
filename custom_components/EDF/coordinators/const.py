@@ -1,0 +1,83 @@
+# Modified from HomeAssistant-OctopusEnergy by BottlecapDave (MIT)
+# Modified by Bobby5291 2026 — adapted for EDF Energy / Kraken API
+
+DOMAIN = "edf_energy"
+INTEGRATION_VERSION = "0.1.0"
+
+EDF_BASE_URL = "https://api.edfgb-kraken.energy"
+
+# Polling intervals (minutes)
+REFRESH_RATE_IN_MINUTES_ACCOUNT = 60
+REFRESH_RATE_IN_MINUTES_RATES = 30
+REFRESH_RATE_IN_MINUTES_PREVIOUS_CONSUMPTION = 60
+REFRESH_RATE_IN_MINUTES_STANDING_CHARGE = 60
+
+# Config flow keys
+CONFIG_VERSION = 1
+
+CONFIG_MAIN_EMAIL = "email"
+CONFIG_MAIN_PASSWORD = "password"
+CONFIG_ACCOUNT_ID = "account_id"
+CONFIG_MAIN_CALORIFIC_VALUE = "calorific_value"
+CONFIG_MAIN_SUPPORTS_LIVE_CONSUMPTION = "supports_live_consumption"
+CONFIG_MAIN_LIVE_ELECTRICITY_CONSUMPTION_REFRESH_IN_MINUTES = "live_electricity_consumption_refresh_in_minutes"
+CONFIG_MAIN_LIVE_GAS_CONSUMPTION_REFRESH_IN_MINUTES = "live_gas_consumption_refresh_in_minutes"
+
+CONFIG_DEFAULT_LIVE_ELECTRICITY_CONSUMPTION_REFRESH_IN_MINUTES = 1
+CONFIG_DEFAULT_LIVE_GAS_CONSUMPTION_REFRESH_IN_MINUTES = 2
+
+# Data/coordinator keys
+DATA_CONFIG = "CONFIG"
+DATA_CLIENT = "CLIENT"
+DATA_ACCOUNT = "ACCOUNT"
+DATA_ACCOUNT_COORDINATOR = "ACCOUNT_COORDINATOR"
+
+DATA_ELECTRICITY_RATES_COORDINATOR_KEY = "ELECTRICITY_RATES_COORDINATOR_{}_{}"
+DATA_ELECTRICITY_RATES_KEY = "ELECTRICITY_RATES_{}_{}"
+DATA_ELECTRICITY_STANDING_CHARGE_KEY = "ELECTRICITY_STANDING_CHARGES_{}_{}"
+
+DATA_GAS_RATES_COORDINATOR_KEY = "GAS_RATES_COORDINATOR_{}_{}"
+DATA_GAS_RATES_KEY = "GAS_RATES_{}_{}"
+DATA_GAS_STANDING_CHARGE_KEY = "GAS_STANDING_CHARGES_{}_{}"
+
+DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY = "PREVIOUS_CONSUMPTION_AND_COST_COORDINATOR_{}_{}"
+DATA_CURRENT_CONSUMPTION_KEY = "CURRENT_CONSUMPTION_{}"
+
+DATA_KNOWN_TARIFF = "KNOWN_TARIFF"
+DATA_GAS_TARIFF_CODE = "GAS_TARIFF_CODE"
+
+# Storage
+STORAGE_ELECTRICITY_TARIFF_OVERRIDE_NAME = "edf_energy.{}-{}-tariff-override.json"
+STORAGE_TARIFF_CACHE_NAME = "edf_energy.tariff-{}.json"
+STORAGE_METER_DEBUG_OVERRIDE_NAME = "edf_energy.{}-{}-override.json"
+STORAGE_ACCOUNT_DEBUG_OVERRIDE_NAME = "edf_energy.{}-override.json"
+
+# Events
+EVENT_ELECTRICITY_PREVIOUS_DAY_RATES = "edf_energy_electricity_previous_day_rates"
+EVENT_ELECTRICITY_CURRENT_DAY_RATES = "edf_energy_electricity_current_day_rates"
+EVENT_ELECTRICITY_NEXT_DAY_RATES = "edf_energy_electricity_next_day_rates"
+EVENT_ELECTRICITY_PREVIOUS_CONSUMPTION_RATES = "edf_energy_electricity_previous_consumption_rates"
+
+EVENT_GAS_PREVIOUS_DAY_RATES = "edf_energy_gas_previous_day_rates"
+EVENT_GAS_CURRENT_DAY_RATES = "edf_energy_gas_current_day_rates"
+EVENT_GAS_NEXT_DAY_RATES = "edf_energy_gas_next_day_rates"
+EVENT_GAS_PREVIOUS_CONSUMPTION_RATES = "edf_energy_gas_previous_consumption_rates"
+
+# Repairs
+REPAIR_INVALID_CREDENTIALS = "invalid_credentials_{}"
+REPAIR_ACCOUNT_NOT_FOUND = "account_not_found_{}"
+REPAIR_NO_ACTIVE_TARIFF = "no_active_tariff_{}_{}"
+REPAIR_TARIFF_RATES_EMPTY = "tariff_rates_empty_{}_{}"
+
+# Misc
+DEFAULT_CALORIFIC_VALUE = 40.0
+MINIMUM_CONSUMPTION_DATA_LENGTH = 3
+COORDINATOR_REFRESH_IN_SECONDS = 60
+
+# Regex
+REGEX_HOURS = "^[0-9]+(\\.[0-9]+)*$"
+REGEX_TIME = "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+REGEX_TARIFF_PARTS = "^((?P<energy>[A-Z])-(?P<rate>[0-9A-Z]+)-)?(?P<product_code>[A-Z0-9-]+)-(?P<region>[A-Z])$"
+REGEX_OFFSET_PARTS = "^(-)?([0-1]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$"
+REGEX_DATE = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+REGEX_PRICE = "^(-)?[0-9]+(\\.[0-9]+)*$"

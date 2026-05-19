@@ -1,4 +1,10 @@
 # EDF UK Integration for Home Assistant
+[![GitHub Release](https://img.shields.io/github/release/Bobby5291/HomeAssistant-EDF-UK.svg?style=for-the-badge)](https://github.com/Bobby5291/HomeAssistant-EDF-UK/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/Bobby5291/HomeAssistant-EDF-UK.svg?style=for-the-badge)](https://github.com/Bobby5291/HomeAssistant-EDF-UK/stargazers)
+[![GitHub Watchers](https://img.shields.io/github/watchers/Bobby5291/HomeAssistant-EDF-UK.svg?style=for-the-badge)](https://github.com/Bobby5291/HomeAssistant-EDF-UK/watchers)
+[![GitHub Forks](https://img.shields.io/github/forks/Bobby5291/HomeAssistant-EDF-UK.svg?style=for-the-badge)](https://github.com/Bobby5291/HomeAssistant-EDF-UK/network)
+[![License](https://img.shields.io/github/license/Bobby5291/HomeAssistant-EDF-UK.svg?style=for-the-badge)](LICENSE)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://hacs.xyz/)
 
 A custom Home Assistant integration for retrieving and monitoring EDF UK smart meter energy data directly within Home Assistant.
 

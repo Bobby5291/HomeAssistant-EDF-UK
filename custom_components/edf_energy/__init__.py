@@ -194,17 +194,6 @@ async def async_setup_dependencies(hass, config):
 
     for point in account_info.get("electricity_meter_points", []) or []:
         mpan = point["mpan"]
-        electricity_tariff = get_active_tariff(now, point["agreements"])
-
-        # Remove stale HA devices if there's no active tariff
-        if electricity_tariff is None:
-            device = device_registry.async_get_device(
-                identifiers={(DOMAIN, f"electricity_{mpan}")}
-            )
-            if device is not None:
-                _LOGGER.debug(f"Removing electricity device {mpan} — no active tariff")
-                device_registry.async_remove_device(device.id)
-            continue
 
         for meter in point["meters"]:
             serial_number = meter["serial_number"]
@@ -247,11 +236,6 @@ async def async_setup_dependencies(hass, config):
     # -------------------------------------------------------------------------
     for point in account_info.get("gas_meter_points", []) or []:
         mprn = point["mprn"]
-        gas_tariff = get_active_tariff(now, point["agreements"])
-
-        if gas_tariff is None:
-            _LOGGER.debug(f"Skipping gas coordinators for {mprn} — no active tariff")
-            continue
 
         for meter in point["meters"]:
             serial_number = meter["serial_number"]

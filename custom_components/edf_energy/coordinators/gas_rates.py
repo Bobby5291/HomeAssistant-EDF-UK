@@ -15,6 +15,7 @@ from ..const import (
     DATA_ACCOUNT,
     DOMAIN,
     DATA_GAS_RATES_KEY,
+    DATA_GAS_RATES_COORDINATOR_KEY,
     EVENT_GAS_CURRENT_DAY_RATES,
     EVENT_GAS_NEXT_DAY_RATES,
     EVENT_GAS_PREVIOUS_DAY_RATES,
@@ -106,6 +107,8 @@ async def async_refresh_gas_rates_data(
             elif clear_rates_empty_cb is not None:
                 clear_rates_empty_cb(tariff)
 
+            new_rates.sort(key=lambda rate: (rate["start"].timestamp(), rate["start"].fold))
+
             raise_rate_events(
                 current,
                 private_rates_to_public_rates(new_rates),
@@ -193,7 +196,7 @@ async def async_setup_gas_rates_coordinator(hass, account_id: str, client: EDFEn
 
         return hass.data[DOMAIN][account_id][key]
 
-    return DataUpdateCoordinator(
+    coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=key,
@@ -201,3 +204,7 @@ async def async_setup_gas_rates_coordinator(hass, account_id: str, client: EDFEn
         update_interval=timedelta(seconds=COORDINATOR_REFRESH_IN_SECONDS),
         always_update=True,
     )
+
+    coordinator_key = DATA_GAS_RATES_COORDINATOR_KEY.format(target_mprn, target_serial_number)
+    hass.data[DOMAIN][account_id][coordinator_key] = coordinator
+    return coordinator

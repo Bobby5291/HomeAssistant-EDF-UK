@@ -230,7 +230,7 @@ async def async_setup_account_info_coordinator(hass, account_id: str):
 
         return hass.data[DOMAIN][account_id][DATA_ACCOUNT]
 
-    hass.data[DOMAIN][account_id][DATA_ACCOUNT_COORDINATOR] = DataUpdateCoordinator(
+    coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=f"edf_energy_account_{account_id}",
@@ -239,3 +239,5 @@ async def async_setup_account_info_coordinator(hass, account_id: str):
         update_interval=timedelta(seconds=COORDINATOR_REFRESH_IN_SECONDS),
         always_update=True,
     )
+    hass.data[DOMAIN][account_id][DATA_ACCOUNT_COORDINATOR] = coordinator
+    return coordinator

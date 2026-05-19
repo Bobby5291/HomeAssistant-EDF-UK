@@ -14,6 +14,8 @@ from .api_client import ApiException, AuthenticationException, EDFEnergyApiClien
 from .coordinators.account import AccountCoordinatorResult, async_setup_account_info_coordinator
 from .coordinators.electricity_rates import async_setup_electricity_rates_coordinator
 from .coordinators.electricity_standing_charges import async_setup_electricity_standing_charges_coordinator
+from .coordinators.gas_rates import async_setup_gas_rates_coordinator
+from .coordinators.gas_standing_charges import async_setup_gas_standing_charges_coordinator
 from .coordinators.current_consumption import async_create_current_consumption_coordinator
 from .coordinators.previous_consumption_and_rates import async_create_previous_consumption_and_rates_coordinator
 
@@ -238,6 +240,36 @@ async def async_setup_dependencies(hass, config):
                 await coordinator.async_config_entry_first_refresh()
 
     # -------------------------------------------------------------------------
+    # Set up coordinators for each active gas meter
+    # -------------------------------------------------------------------------
+    for point in account_info.get("gas_meter_points", []) or []:
+        mprn = point["mprn"]
+        gas_tariff = get_active_tariff(now, point["agreements"])
+
+        if gas_tariff is None:
+            _LOGGER.debug(f"Skipping gas coordinators for {mprn} — no active tariff")
+            continue
+
+        for meter in point["meters"]:
+            serial_number = meter["serial_number"]
+
+            gas_rates_coordinator = await async_setup_gas_rates_coordinator(
+                hass, account_id, client, mprn, serial_number
+            )
+            await gas_rates_coordinator.async_config_entry_first_refresh()
+
+            gas_standing_charge_coordinator = await async_setup_gas_standing_charges_coordinator(
+                hass, account_id, mprn, serial_number
+            )
+            await gas_standing_charge_coordinator.async_config_entry_first_refresh()
+
+            gas_prev_coordinator = await async_create_previous_consumption_and_rates_coordinator(
+                hass, account_id, client, mprn, serial_number, is_electricity=False
+            )
+            await gas_prev_coordinator.async_config_entry_first_refresh()
+
+    # -------------------------------------------------------------------------
     # Account info coordinator — polls account balance, tariff etc every 60 mins
     # -------------------------------------------------------------------------
-    await async_setup_account_info_coordinator(hass, account_id)
+    account_coordinator = await async_setup_account_info_coordinator(hass, account_id)
+    await account_coordinator.async_config_entry_first_refresh()

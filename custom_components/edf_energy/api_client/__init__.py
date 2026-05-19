@@ -124,10 +124,6 @@ account_query = '''query {{
               tariffCode
               productCode
             }}
-            ... on PrepayTariff {{
-              tariffCode
-              productCode
-            }}
           }}
         }}
       }}

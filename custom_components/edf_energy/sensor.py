@@ -49,8 +49,6 @@ from .const import (
     DATA_CURRENT_CONSUMPTION_KEY,
     DATA_ELECTRICITY_RATES_COORDINATOR_KEY,
     DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY,
-    DATA_GAS_RATES_COORDINATOR_KEY,
-    DATA_GAS_STANDING_CHARGE_COORDINATOR_KEY,
     DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY,
     DOMAIN,
 )
@@ -96,7 +94,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
         active_tariff = get_active_tariff(now, point["agreements"])
 
         if active_tariff is None:
-            _LOGGER.debug(f"Skipping {mpan} — no active tariff")
+            _LOGGER.warning(f"Skipping electricity sensors for {mpan} — no active tariff found. Check HA logs for tariff parsing details.")
             continue
 
         # Tariff name sensor

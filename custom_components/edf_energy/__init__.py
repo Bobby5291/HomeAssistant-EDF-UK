@@ -211,19 +211,22 @@ async def async_setup_dependencies(hass, config):
             device_id = meter.get("device_id")
 
             # Rates coordinator (polls every 30 mins)
-            await async_setup_electricity_rates_coordinator(
+            rates_coordinator = await async_setup_electricity_rates_coordinator(
                 hass, account_id, mpan, serial_number
             )
+            await rates_coordinator.async_config_entry_first_refresh()
 
             # Standing charge coordinator (polls every 60 mins)
-            await async_setup_electricity_standing_charges_coordinator(
+            standing_charge_coordinator = await async_setup_electricity_standing_charges_coordinator(
                 hass, account_id, mpan, serial_number
             )
+            await standing_charge_coordinator.async_config_entry_first_refresh()
 
             # Previous consumption coordinator (polls yesterday's data)
-            await async_create_previous_consumption_and_rates_coordinator(
+            prev_coordinator = await async_create_previous_consumption_and_rates_coordinator(
                 hass, account_id, client, mpan, serial_number, is_electricity=True
             )
+            await prev_coordinator.async_config_entry_first_refresh()
 
             # Live smart meter consumption (only if user has SMETS2 and opted in)
             if supports_live_consumption and device_id is not None:

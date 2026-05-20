@@ -6,7 +6,6 @@ from datetime import timedelta
 
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import issue_registry as ir
-from homeassistant.helpers import device_registry as dr
 from homeassistant.util.dt import utcnow
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 
@@ -19,7 +18,6 @@ from .coordinators.gas_standing_charges import async_setup_gas_standing_charges_
 from .coordinators.current_consumption import async_create_current_consumption_coordinator
 from .coordinators.previous_consumption_and_rates import async_create_previous_consumption_and_rates_coordinator
 
-from .utils import get_active_tariff, get_tariff_parts
 from .utils.error import api_exception_to_string
 from .storage.account import async_load_cached_account, async_save_cached_account
 
@@ -33,9 +31,8 @@ from .const import (
     CONFIG_VERSION,
     DATA_CLIENT,
     DATA_ACCOUNT,
-    DATA_ACCOUNT_COORDINATOR,
-    DATA_ELECTRICITY_RATES_COORDINATOR_KEY,
     DATA_CURRENT_CONSUMPTION_KEY,
+    DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY,
     DOMAIN,
     REPAIR_ACCOUNT_NOT_FOUND,
     REPAIR_INVALID_CREDENTIALS,
@@ -180,9 +177,6 @@ async def async_setup_dependencies(hass, config):
         utcnow(), 1, account_info
     )
 
-    now = utcnow()
-    device_registry = dr.async_get(hass)
-
     # -------------------------------------------------------------------------
     # Set up coordinators for each active electricity meter
     # -------------------------------------------------------------------------
@@ -227,8 +221,8 @@ async def async_setup_dependencies(hass, config):
                     live_refresh_rate,
                 )
                 hass.data[DOMAIN][account_id][
-                    DATA_CURRENT_CONSUMPTION_KEY.format(device_id)
-                ] = None
+                    DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY.format(device_id)
+                ] = coordinator
                 await coordinator.async_config_entry_first_refresh()
 
     # -------------------------------------------------------------------------

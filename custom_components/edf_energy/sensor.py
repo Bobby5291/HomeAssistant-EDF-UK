@@ -44,7 +44,7 @@ from .const import (
     DATA_ACCOUNT,
     DATA_ACCOUNT_COORDINATOR,
     DATA_CLIENT,
-    DATA_CURRENT_CONSUMPTION_KEY,
+    DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY,
     DATA_ELECTRICITY_RATES_COORDINATOR_KEY,
     DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY,
     DATA_GAS_RATES_COORDINATOR_KEY,
@@ -126,7 +126,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 
             # Live smart meter sensors — only if user has SMETS2 and opted in
             if supports_live and device_id is not None:
-                consumption_coordinator_key = DATA_CURRENT_CONSUMPTION_KEY.format(device_id)
+                consumption_coordinator_key = DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY.format(device_id)
                 consumption_coordinator = hass.data[DOMAIN][account_id].get(consumption_coordinator_key)
 
                 if consumption_coordinator is not None:

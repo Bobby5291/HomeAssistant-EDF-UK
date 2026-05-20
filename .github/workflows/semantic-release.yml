@@ -1,0 +1,14 @@
+            - name: Semantic Version Manager
+  # You may pin to the exact commit or the version.
+  # uses: issue-ops/semver@b453ee158e17424efb66e6e5d0ae62dfeb6f5ae3
+  uses: issue-ops/semver@v0.1.0
+  with:
+    # The path to the manifest file that contains the version information, relative to the root of the repository. If not set, then `version` should be set to an explicit version in SemVer 2.0 format.
+    manifest-path: # optional, default is package.json
+    # The Git ref to tag with the specified or inferred version. This defaults to the base ref of a pull request event trigger.
+    ref: # optional, default is ${{ github.base_ref }}
+    # The version you want to explicitly use (e.g. '1.2.3-beta.4+build.5'). This must follow SemVer standards. If not set, then `manifest-path` should be set so the action can attempt to infer the version from the contents of the repository.
+    use-version: # optional
+    # The path where the repository has been cloned using the `actions/checkout` step. If not set, then `version` should be set to an explicit version.
+    workspace: # optional, default is ${{ github.workspace }}
+          

@@ -9,6 +9,7 @@ from .account.balance import (
     EDFEnergyAccountIsOverdue,
     EDFEnergyDirectDebitNeedsReview,
 )
+from .account.contract import EDFEnergyCanRenewTariff
 
 from .const import (
     CONFIG_ACCOUNT_ID,
@@ -30,6 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     entities = [
         EDFEnergyAccountIsOverdue(hass, account_coordinator, account_id),
         EDFEnergyDirectDebitNeedsReview(hass, account_coordinator, account_id),
+        EDFEnergyCanRenewTariff(hass, account_coordinator, account_id),
     ]
 
     async_add_entities(entities)

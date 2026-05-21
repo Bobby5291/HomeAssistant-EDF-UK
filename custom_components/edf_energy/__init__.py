@@ -17,6 +17,8 @@ from .coordinators.gas_rates import async_setup_gas_rates_coordinator
 from .coordinators.gas_standing_charges import async_setup_gas_standing_charges_coordinator
 from .coordinators.current_consumption import async_create_current_consumption_coordinator
 from .coordinators.previous_consumption_and_rates import async_create_previous_consumption_and_rates_coordinator
+from .coordinators.annual_electricity_consumption import async_setup_annual_electricity_consumption_coordinator
+from .coordinators.annual_gas_consumption import async_setup_annual_gas_consumption_coordinator
 
 from .utils.error import api_exception_to_string
 from .storage.account import async_load_cached_account, async_save_cached_account
@@ -189,6 +191,12 @@ async def async_setup_dependencies(hass, config):
     for point in account_info.get("electricity_meter_points", []) or []:
         mpan = point["mpan"]
 
+        # Annual consumption coordinator — one per MPAN
+        annual_elec_coordinator = await async_setup_annual_electricity_consumption_coordinator(
+            hass, account_id, client, mpan
+        )
+        await annual_elec_coordinator.async_config_entry_first_refresh()
+
         for meter in point["meters"]:
             serial_number = meter["serial_number"]
             device_id = meter.get("device_id")
@@ -230,6 +238,12 @@ async def async_setup_dependencies(hass, config):
     # -------------------------------------------------------------------------
     for point in account_info.get("gas_meter_points", []) or []:
         mprn = point["mprn"]
+
+        # Annual gas consumption coordinator — one per MPRN
+        annual_gas_coordinator = await async_setup_annual_gas_consumption_coordinator(
+            hass, account_id, client, mprn
+        )
+        await annual_gas_coordinator.async_config_entry_first_refresh()
 
         for meter in point["meters"]:
             serial_number = meter["serial_number"]

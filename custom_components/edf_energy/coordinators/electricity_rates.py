@@ -178,7 +178,7 @@ async def async_setup_electricity_rates_coordinator(hass, account_id: str, targe
     hass.data[DOMAIN][account_id][key] = None
 
     async def async_update_electricity_rates_data():
-        account_coordinator = hass.data[DOMAIN][account_id][DATA_ACCOUNT_COORDINATOR]
+        account_coordinator = hass.data[DOMAIN][account_id].get(DATA_ACCOUNT_COORDINATOR)
         if account_coordinator is not None:
             await account_coordinator.async_request_refresh()
 

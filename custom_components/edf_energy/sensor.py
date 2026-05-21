@@ -49,6 +49,10 @@ from .account.contract import (
 from .account.payment import EDFEnergyDirectDebitAmount, EDFEnergyLastPayment
 from .electricity.meter_reading import EDFEnergyElectricityMeterReading
 from .gas.meter_reading import EDFEnergyGasMeterReading
+from .intelligent.sensors import (
+    EDFEnergyIntelligentCurrentStateSensor,
+    EDFEnergyIntelligentDispatchesLastRetrieved,
+)
 
 from .const import (
     CONFIG_ACCOUNT_ID,
@@ -69,6 +73,8 @@ from .const import (
     DATA_GAS_RATES_COORDINATOR_KEY,
     DATA_GAS_STANDING_CHARGE_COORDINATOR_KEY,
     DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY,
+    DATA_INTELLIGENT_COORDINATOR_KEY,
+    DATA_INTELLIGENT_DEVICE_KEY,
     DOMAIN,
 )
 
@@ -231,5 +237,17 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 
             if gas_readings_coordinator is not None:
                 entities.append(EDFEnergyGasMeterReading(hass, gas_readings_coordinator, meter, point))
+
+    # -------------------------------------------------------------------------
+    # Intelligent / EV sensors
+    # -------------------------------------------------------------------------
+    intelligent_device = hass.data[DOMAIN][account_id].get(DATA_INTELLIGENT_DEVICE_KEY.format(account_id))
+    if intelligent_device is not None:
+        ev_device_id = intelligent_device["id"]
+        intelligent_coordinator_key = DATA_INTELLIGENT_COORDINATOR_KEY.format(ev_device_id)
+        intelligent_coordinator = hass.data[DOMAIN][account_id].get(intelligent_coordinator_key)
+        if intelligent_coordinator is not None:
+            entities.append(EDFEnergyIntelligentCurrentStateSensor(hass, intelligent_coordinator, account_id, intelligent_device))
+            entities.append(EDFEnergyIntelligentDispatchesLastRetrieved(hass, intelligent_coordinator, account_id, intelligent_device))
 
     async_add_entities(entities)

@@ -22,6 +22,7 @@ from .coordinators.annual_gas_consumption import async_setup_annual_gas_consumpt
 from .coordinators.electricity_meter_readings import async_setup_electricity_meter_readings_coordinator
 from .coordinators.gas_meter_readings import async_setup_gas_meter_readings_coordinator
 from .coordinators.account_transactions import async_setup_account_transactions_coordinator
+from .coordinators.intelligent import async_setup_intelligent_coordinator
 
 from .utils.error import api_exception_to_string
 from .storage.account import async_load_cached_account, async_save_cached_account
@@ -39,6 +40,8 @@ from .const import (
     DATA_CURRENT_CONSUMPTION_KEY,
     DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY,
     DATA_ACCOUNT_TRANSACTIONS_COORDINATOR_KEY,
+    DATA_INTELLIGENT_DEVICE_KEY,
+    DATA_INTELLIGENT_COORDINATOR_KEY,
     DOMAIN,
     REPAIR_ACCOUNT_NOT_FOUND,
     REPAIR_INVALID_CREDENTIALS,
@@ -46,7 +49,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-ACCOUNT_PLATFORMS = ["sensor", "binary_sensor", "event"]
+ACCOUNT_PLATFORMS = ["sensor", "binary_sensor", "event", "switch", "number", "select", "calendar"]
 
 
 async def async_remove_config_entry_device(hass, config_entry, device_entry) -> bool:
@@ -284,6 +287,25 @@ async def async_setup_dependencies(hass, config):
     # -------------------------------------------------------------------------
     transactions_coordinator = await async_setup_account_transactions_coordinator(hass, account_id, client)
     await transactions_coordinator.async_config_entry_first_refresh()
+
+    # -------------------------------------------------------------------------
+    # Intelligent / EV coordinator — optional, only if account has a SmartFlex device
+    # -------------------------------------------------------------------------
+    try:
+        intelligent_device = await client.async_get_intelligent_device(account_id)
+        if intelligent_device is not None:
+            ev_device_id = intelligent_device["id"]
+            hass.data[DOMAIN][account_id][DATA_INTELLIGENT_DEVICE_KEY.format(account_id)] = intelligent_device
+            intelligent_coordinator = await async_setup_intelligent_coordinator(
+                hass, account_id, client, ev_device_id
+            )
+            await intelligent_coordinator.async_config_entry_first_refresh()
+            hass.data[DOMAIN][account_id][DATA_INTELLIGENT_COORDINATOR_KEY.format(ev_device_id)] = intelligent_coordinator
+            _LOGGER.debug(f"Intelligent coordinator set up for device {ev_device_id}")
+        else:
+            _LOGGER.debug(f"No intelligent/EV device found for account {account_id} — skipping intelligent coordinator")
+    except Exception as e:
+        _LOGGER.warning(f"Failed to set up intelligent coordinator for {account_id}: {e}")
 
     # -------------------------------------------------------------------------
     # Account info coordinator — polls account balance, tariff etc every 60 mins

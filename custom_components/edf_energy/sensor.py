@@ -25,6 +25,20 @@ from .electricity.current_sensors import (
 from .electricity.previous_consumption import (
     EDFEnergyPreviousAccumulativeElectricityConsumption,
     EDFEnergyPreviousAccumulativeElectricityCost,
+    EDFEnergyPreviousElectricityPeakConsumption,
+    EDFEnergyPreviousElectricityOffPeakConsumption,
+    EDFEnergyPreviousElectricityPeakCost,
+    EDFEnergyPreviousElectricityOffPeakCost,
+)
+from .electricity.diagnostics import (
+    EDFEnergyElectricityRatesLastRetrieved,
+    EDFEnergyElectricityStandingChargeLastRetrieved,
+    EDFEnergyElectricityConsumptionLastRetrieved,
+)
+from .electricity.cost_tracker import (
+    EDFEnergyElectricityDailyCost,
+    EDFEnergyElectricityWeeklyCost,
+    EDFEnergyElectricityMonthlyCost,
 )
 from .gas.current_rate import EDFEnergyGasCurrentRate
 from .gas.next_rate import EDFEnergyGasNextRate
@@ -35,6 +49,16 @@ from .gas.previous_consumption import (
     EDFEnergyPreviousAccumulativeGasCost,
 )
 from .gas.annual_consumption import EDFEnergyGasAnnualQuantity
+from .gas.diagnostics import (
+    EDFEnergyGasRatesLastRetrieved,
+    EDFEnergyGasStandingChargeLastRetrieved,
+    EDFEnergyGasConsumptionLastRetrieved,
+)
+from .gas.cost_tracker import (
+    EDFEnergyGasDailyCost,
+    EDFEnergyGasWeeklyCost,
+    EDFEnergyGasMonthlyCost,
+)
 from .account.balance import (
     EDFEnergyAccountBalance,
     EDFEnergyProjectedBalance,
@@ -47,6 +71,7 @@ from .account.contract import (
     EDFEnergyGasContractEnd,
 )
 from .account.payment import EDFEnergyDirectDebitAmount, EDFEnergyLastPayment
+from .account.diagnostics import EDFEnergyAccountLastRetrieved
 from .electricity.meter_reading import EDFEnergyElectricityMeterReading
 from .gas.meter_reading import EDFEnergyGasMeterReading
 from .intelligent.sensors import (
@@ -66,9 +91,11 @@ from .const import (
     DATA_ANNUAL_GAS_CONSUMPTION_COORDINATOR_KEY,
     DATA_ACCOUNT_TRANSACTIONS_COORDINATOR_KEY,
     DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY,
+    DATA_ELECTRICITY_COST_TRACKER_COORDINATOR_KEY,
     DATA_ELECTRICITY_METER_READINGS_COORDINATOR_KEY,
     DATA_ELECTRICITY_RATES_COORDINATOR_KEY,
     DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY,
+    DATA_GAS_COST_TRACKER_COORDINATOR_KEY,
     DATA_GAS_METER_READINGS_COORDINATOR_KEY,
     DATA_GAS_RATES_COORDINATOR_KEY,
     DATA_GAS_STANDING_CHARGE_COORDINATOR_KEY,
@@ -97,15 +124,14 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     entities = []
 
     # -------------------------------------------------------------------------
-    # Account-level sensors (balance, tariff)
+    # Account-level sensors
     # -------------------------------------------------------------------------
     entities.append(EDFEnergyAccountBalance(hass, account_coordinator, account_id))
     entities.append(EDFEnergyProjectedBalance(hass, account_coordinator, account_id))
     entities.append(EDFEnergyOverdueBalance(hass, account_coordinator, account_id))
     entities.append(EDFEnergyRecommendedBalanceAdjustment(hass, account_coordinator, account_id))
-
-    # Direct debit
     entities.append(EDFEnergyDirectDebitAmount(hass, account_coordinator, account_id))
+    entities.append(EDFEnergyAccountLastRetrieved(hass, account_coordinator, account_id))
 
     # Last payment (from transactions coordinator)
     transactions_coordinator_key = DATA_ACCOUNT_TRANSACTIONS_COORDINATOR_KEY.format(account_id)
@@ -145,11 +171,13 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             standing_charge_coordinator_key = DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY.format(mpan, serial_number)
             previous_consumption_coordinator_key = DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY.format(mpan, serial_number)
             readings_coordinator_key = DATA_ELECTRICITY_METER_READINGS_COORDINATOR_KEY.format(mpan, serial_number)
+            cost_tracker_coordinator_key = DATA_ELECTRICITY_COST_TRACKER_COORDINATOR_KEY.format(mpan, serial_number)
 
             rates_coordinator = hass.data[DOMAIN][account_id].get(rates_coordinator_key)
             standing_charge_coordinator = hass.data[DOMAIN][account_id].get(standing_charge_coordinator_key)
             previous_consumption_coordinator = hass.data[DOMAIN][account_id].get(previous_consumption_coordinator_key)
             readings_coordinator = hass.data[DOMAIN][account_id].get(readings_coordinator_key)
+            cost_tracker_coordinator = hass.data[DOMAIN][account_id].get(cost_tracker_coordinator_key)
 
             if rates_coordinator is None:
                 _LOGGER.warning(f"Rates coordinator not found for {mpan}/{serial_number} — skipping rate sensors")
@@ -161,19 +189,32 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             entities.append(EDFEnergyElectricityPreviousRate(hass, rates_coordinator, meter, point))
             entities.append(EDFEnergyElectricityDayRate(hass, rates_coordinator, meter, point))
             entities.append(EDFEnergyElectricityNightRate(hass, rates_coordinator, meter, point))
+            entities.append(EDFEnergyElectricityRatesLastRetrieved(hass, rates_coordinator, meter, point))
 
             # Standing charge
             if standing_charge_coordinator is not None:
                 entities.append(EDFEnergyElectricityCurrentStandingCharge(hass, standing_charge_coordinator, meter, point))
+                entities.append(EDFEnergyElectricityStandingChargeLastRetrieved(hass, standing_charge_coordinator, meter, point))
 
             # Meter register reading
             if readings_coordinator is not None:
                 entities.append(EDFEnergyElectricityMeterReading(hass, readings_coordinator, meter, point))
 
-            # Previous day consumption + cost
+            # Previous day consumption + cost + peak/off-peak split
             if previous_consumption_coordinator is not None:
                 entities.append(EDFEnergyPreviousAccumulativeElectricityConsumption(hass, previous_consumption_coordinator, meter, point))
                 entities.append(EDFEnergyPreviousAccumulativeElectricityCost(hass, previous_consumption_coordinator, meter, point))
+                entities.append(EDFEnergyPreviousElectricityPeakConsumption(hass, previous_consumption_coordinator, meter, point))
+                entities.append(EDFEnergyPreviousElectricityOffPeakConsumption(hass, previous_consumption_coordinator, meter, point))
+                entities.append(EDFEnergyPreviousElectricityPeakCost(hass, previous_consumption_coordinator, meter, point))
+                entities.append(EDFEnergyPreviousElectricityOffPeakCost(hass, previous_consumption_coordinator, meter, point))
+                entities.append(EDFEnergyElectricityConsumptionLastRetrieved(hass, previous_consumption_coordinator, meter, point))
+
+            # Daily/weekly/monthly cost trackers
+            if cost_tracker_coordinator is not None:
+                entities.append(EDFEnergyElectricityDailyCost(hass, cost_tracker_coordinator, meter, point))
+                entities.append(EDFEnergyElectricityWeeklyCost(hass, cost_tracker_coordinator, meter, point))
+                entities.append(EDFEnergyElectricityMonthlyCost(hass, cost_tracker_coordinator, meter, point))
 
             # Live smart meter sensors — only if user has SMETS2 and opted in
             if supports_live and device_id is not None:
@@ -214,11 +255,13 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             gas_standing_charge_coordinator_key = DATA_GAS_STANDING_CHARGE_COORDINATOR_KEY.format(mprn, serial_number)
             gas_previous_consumption_coordinator_key = DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY.format(mprn, serial_number)
             gas_readings_coordinator_key = DATA_GAS_METER_READINGS_COORDINATOR_KEY.format(mprn, serial_number)
+            gas_cost_tracker_coordinator_key = DATA_GAS_COST_TRACKER_COORDINATOR_KEY.format(mprn, serial_number)
 
             gas_rates_coordinator = hass.data[DOMAIN][account_id].get(gas_rates_coordinator_key)
             gas_standing_charge_coordinator = hass.data[DOMAIN][account_id].get(gas_standing_charge_coordinator_key)
             gas_previous_consumption_coordinator = hass.data[DOMAIN][account_id].get(gas_previous_consumption_coordinator_key)
             gas_readings_coordinator = hass.data[DOMAIN][account_id].get(gas_readings_coordinator_key)
+            gas_cost_tracker_coordinator = hass.data[DOMAIN][account_id].get(gas_cost_tracker_coordinator_key)
 
             if gas_rates_coordinator is None:
                 _LOGGER.warning(f"Gas rates coordinator not found for {mprn}/{serial_number} — skipping gas rate sensors")
@@ -227,27 +270,23 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             entities.append(EDFEnergyGasCurrentRate(hass, gas_rates_coordinator, meter, point))
             entities.append(EDFEnergyGasNextRate(hass, gas_rates_coordinator, meter, point))
             entities.append(EDFEnergyGasPreviousRate(hass, gas_rates_coordinator, meter, point))
+            entities.append(EDFEnergyGasRatesLastRetrieved(hass, gas_rates_coordinator, meter, point))
 
             if gas_standing_charge_coordinator is not None:
                 entities.append(EDFEnergyGasCurrentStandingCharge(hass, gas_standing_charge_coordinator, meter, point))
+                entities.append(EDFEnergyGasStandingChargeLastRetrieved(hass, gas_standing_charge_coordinator, meter, point))
 
             if gas_previous_consumption_coordinator is not None:
                 entities.append(EDFEnergyPreviousAccumulativeGasConsumption(hass, gas_previous_consumption_coordinator, meter, point))
                 entities.append(EDFEnergyPreviousAccumulativeGasCost(hass, gas_previous_consumption_coordinator, meter, point))
+                entities.append(EDFEnergyGasConsumptionLastRetrieved(hass, gas_previous_consumption_coordinator, meter, point))
 
             if gas_readings_coordinator is not None:
                 entities.append(EDFEnergyGasMeterReading(hass, gas_readings_coordinator, meter, point))
 
-    # -------------------------------------------------------------------------
-    # Intelligent / EV sensors
-    # -------------------------------------------------------------------------
-    intelligent_device = hass.data[DOMAIN][account_id].get(DATA_INTELLIGENT_DEVICE_KEY.format(account_id))
-    if intelligent_device is not None:
-        ev_device_id = intelligent_device["id"]
-        intelligent_coordinator_key = DATA_INTELLIGENT_COORDINATOR_KEY.format(ev_device_id)
-        intelligent_coordinator = hass.data[DOMAIN][account_id].get(intelligent_coordinator_key)
-        if intelligent_coordinator is not None:
-            entities.append(EDFEnergyIntelligentCurrentStateSensor(hass, intelligent_coordinator, account_id, intelligent_device))
-            entities.append(EDFEnergyIntelligentDispatchesLastRetrieved(hass, intelligent_coordinator, account_id, intelligent_device))
+            if gas_cost_tracker_coordinator is not None:
+                entities.append(EDFEnergyGasDailyCost(hass, gas_cost_tracker_coordinator, meter, point))
+                entities.append(EDFEnergyGasWeeklyCost(hass, gas_cost_tracker_coordinator, meter, point))
+                entities.append(EDFEnergyGasMonthlyCost(hass, gas_cost_tracker_coordinator, meter, point))
 
     async_add_entities(entities)

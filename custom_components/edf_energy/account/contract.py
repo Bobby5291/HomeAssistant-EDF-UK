@@ -83,6 +83,7 @@ class EDFEnergyElectricityContractEnd(CoordinatorEntity, EDFEnergyAccountSensor,
             "mpan": mpan,
             "tariff_code": None,
             "contract_start": None,
+            "rolling_contract": None,
         })
 
     @property
@@ -140,6 +141,7 @@ class EDFEnergyElectricityContractEnd(CoordinatorEntity, EDFEnergyAccountSensor,
                             self._attributes.update({
                                 "tariff_code": active_tariff.code if active_tariff else None,
                                 "contract_start": agreement.get("start"),
+                                "rolling_contract": end_raw is None,
                             })
                             break
                     break
@@ -228,6 +230,7 @@ class EDFEnergyGasContractEnd(CoordinatorEntity, EDFEnergyAccountSensor, Restore
                             self._attributes.update({
                                 "tariff_code": active_tariff.code if active_tariff else None,
                                 "contract_start": agreement.get("start"),
+                                "rolling_contract": end_raw is None,
                             })
                             break
                     break

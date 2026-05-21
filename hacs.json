@@ -1,6 +1,7 @@
 {
   "name": "EDF Energy",
   "content_in_root": false,
+  "country": "GB",
   "render_readme": true,
   "homeassistant": "2026.5.0",
   "zip_release": true,

@@ -10,6 +10,7 @@ from homeassistant.components.sensor import RestoreSensor, SensorDeviceClass, Se
 
 from .base import EDFEnergyElectricitySensor
 from ..utils.attributes import dict_to_typed_dict
+from ..utils.conversions import pence_to_pounds_pence_accurate
 from ..coordinators.electricity_rates import ElectricityRatesCoordinatorResult
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,7 +34,10 @@ def _get_day_night_rates(rates: list, current):
         return None, None
 
     unique_values = list(set(today_values))
-    return max(unique_values), min(unique_values)
+    return (
+        pence_to_pounds_pence_accurate(max(unique_values)),
+        pence_to_pounds_pence_accurate(min(unique_values)),
+    )
 
 
 class EDFEnergyElectricityDayRate(CoordinatorEntity, EDFEnergyElectricitySensor, RestoreSensor):

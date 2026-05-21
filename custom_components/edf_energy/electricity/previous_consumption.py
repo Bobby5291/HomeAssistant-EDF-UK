@@ -272,3 +272,380 @@ class EDFEnergyPreviousAccumulativeElectricityCost(CoordinatorEntity, EDFEnergyE
             self._state = None if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN) else last_sensor_state.native_value
             self._attributes = dict_to_typed_dict(state.attributes)
             _LOGGER.debug(f'Restored EDFEnergyPreviousAccumulativeElectricityCost state: {self._state}')
+
+
+def calculate_electricity_peak_offpeak(consumption_data: list, rate_data: list, standing_charge: float):
+    """
+    Split yesterday's consumption + cost into peak (day) and off-peak (night) buckets.
+    For single-rate tariffs all consumption is classified as peak.
+    Returns dict or None.
+    """
+    if not consumption_data or not rate_data:
+        return None
+
+    all_rate_values = list(set(r["value_inc_vat"] for r in rate_data))
+    is_economy_7 = len(all_rate_values) > 1
+    peak_threshold = max(all_rate_values)
+
+    peak_kwh = 0.0
+    peak_pence = 0.0
+    offpeak_kwh = 0.0
+    offpeak_pence = 0.0
+    matched = False
+
+    for item in consumption_data:
+        kwh = item["consumption"]
+        matched_rate = None
+        for rate in rate_data:
+            if rate["start"] <= item["start"] < rate["end"]:
+                matched_rate = rate
+                break
+        if matched_rate is None:
+            continue
+
+        matched = True
+        rate_pence = matched_rate["value_inc_vat"]
+        cost_pence = consumption_cost_in_pence(kwh, rate_pence)
+
+        if not is_economy_7 or rate_pence >= peak_threshold:
+            peak_kwh += kwh
+            peak_pence += cost_pence
+        else:
+            offpeak_kwh += kwh
+            offpeak_pence += cost_pence
+
+    if not matched:
+        return None
+
+    standing_charge_pounds = pence_to_pounds_pence(standing_charge) if standing_charge is not None else 0
+
+    return {
+        "is_economy_7": is_economy_7,
+        "peak_consumption": round(peak_kwh, 5),
+        "peak_cost": pence_to_pounds_pence(peak_pence),
+        "offpeak_consumption": round(offpeak_kwh, 5),
+        "offpeak_cost": pence_to_pounds_pence(offpeak_pence),
+        "standing_charge": standing_charge_pounds,
+        "last_reset": consumption_data[-1]["end"],
+    }
+
+
+class EDFEnergyPreviousElectricityPeakConsumption(CoordinatorEntity, EDFEnergyElectricitySensor, RestoreSensor):
+    """Yesterday's peak (day-rate) electricity consumption in kWh."""
+
+    def __init__(self, hass: HomeAssistant, coordinator, meter, point):
+        CoordinatorEntity.__init__(self, coordinator)
+        EDFEnergyElectricitySensor.__init__(self, hass, meter, point)
+        self._state = None
+        self._last_reset = None
+
+    @property
+    def unique_id(self):
+        return f'edf_energy_electricity_{self._serial_number}_{self._mpan}{self._export_id_addition}_previous_peak_consumption'
+
+    @property
+    def name(self):
+        return f'EDF {self._export_name_addition}Electricity Previous Peak Consumption ({self._serial_number}/{self._mpan})'
+
+    @property
+    def device_class(self):
+        return SensorDeviceClass.ENERGY
+
+    @property
+    def state_class(self):
+        return SensorStateClass.TOTAL
+
+    @property
+    def native_unit_of_measurement(self):
+        return UnitOfEnergy.KILO_WATT_HOUR
+
+    @property
+    def icon(self):
+        return "mdi:weather-sunny"
+
+    @property
+    def extra_state_attributes(self):
+        return self._attributes
+
+    @property
+    def last_reset(self):
+        return self._last_reset
+
+    @property
+    def native_value(self):
+        return self._state
+
+    @property
+    def should_poll(self):
+        return True
+
+    async def async_update(self):
+        await super().async_update()
+        if not self.enabled:
+            return
+
+        result: PreviousConsumptionCoordinatorResult = (
+            self.coordinator.data if self.coordinator is not None and self.coordinator.data is not None else None
+        )
+        split = calculate_electricity_peak_offpeak(
+            result.consumption if result else None,
+            result.rates if result else None,
+            result.standing_charge if result else None,
+        )
+        if split is not None:
+            self._state = split["peak_consumption"]
+            self._last_reset = split["last_reset"]
+            self._attributes.update({
+                "is_economy_7": split["is_economy_7"],
+                "offpeak_consumption": split["offpeak_consumption"],
+            })
+        self._attributes = dict_to_typed_dict(self._attributes)
+
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        state = await self.async_get_last_state()
+        last_sensor_state = await self.async_get_last_sensor_data()
+        if state is not None and last_sensor_state is not None and self._state is None:
+            self._state = None if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN) else last_sensor_state.native_value
+            self._attributes = dict_to_typed_dict(state.attributes)
+
+
+class EDFEnergyPreviousElectricityOffPeakConsumption(CoordinatorEntity, EDFEnergyElectricitySensor, RestoreSensor):
+    """Yesterday's off-peak (night-rate) electricity consumption in kWh."""
+
+    def __init__(self, hass: HomeAssistant, coordinator, meter, point):
+        CoordinatorEntity.__init__(self, coordinator)
+        EDFEnergyElectricitySensor.__init__(self, hass, meter, point)
+        self._state = None
+        self._last_reset = None
+
+    @property
+    def unique_id(self):
+        return f'edf_energy_electricity_{self._serial_number}_{self._mpan}{self._export_id_addition}_previous_offpeak_consumption'
+
+    @property
+    def name(self):
+        return f'EDF {self._export_name_addition}Electricity Previous Off-Peak Consumption ({self._serial_number}/{self._mpan})'
+
+    @property
+    def device_class(self):
+        return SensorDeviceClass.ENERGY
+
+    @property
+    def state_class(self):
+        return SensorStateClass.TOTAL
+
+    @property
+    def native_unit_of_measurement(self):
+        return UnitOfEnergy.KILO_WATT_HOUR
+
+    @property
+    def icon(self):
+        return "mdi:weather-night"
+
+    @property
+    def extra_state_attributes(self):
+        return self._attributes
+
+    @property
+    def last_reset(self):
+        return self._last_reset
+
+    @property
+    def native_value(self):
+        return self._state
+
+    @property
+    def should_poll(self):
+        return True
+
+    async def async_update(self):
+        await super().async_update()
+        if not self.enabled:
+            return
+
+        result: PreviousConsumptionCoordinatorResult = (
+            self.coordinator.data if self.coordinator is not None and self.coordinator.data is not None else None
+        )
+        split = calculate_electricity_peak_offpeak(
+            result.consumption if result else None,
+            result.rates if result else None,
+            result.standing_charge if result else None,
+        )
+        if split is not None:
+            self._state = split["offpeak_consumption"]
+            self._last_reset = split["last_reset"]
+            self._attributes.update({
+                "is_economy_7": split["is_economy_7"],
+                "peak_consumption": split["peak_consumption"],
+            })
+        self._attributes = dict_to_typed_dict(self._attributes)
+
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        state = await self.async_get_last_state()
+        last_sensor_state = await self.async_get_last_sensor_data()
+        if state is not None and last_sensor_state is not None and self._state is None:
+            self._state = None if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN) else last_sensor_state.native_value
+            self._attributes = dict_to_typed_dict(state.attributes)
+
+
+class EDFEnergyPreviousElectricityPeakCost(CoordinatorEntity, EDFEnergyElectricitySensor, RestoreSensor):
+    """Yesterday's peak-rate electricity cost in GBP."""
+
+    def __init__(self, hass: HomeAssistant, coordinator, meter, point):
+        CoordinatorEntity.__init__(self, coordinator)
+        EDFEnergyElectricitySensor.__init__(self, hass, meter, point)
+        self._state = None
+        self._last_reset = None
+
+    @property
+    def unique_id(self):
+        return f'edf_energy_electricity_{self._serial_number}_{self._mpan}{self._export_id_addition}_previous_peak_cost'
+
+    @property
+    def name(self):
+        return f'EDF {self._export_name_addition}Electricity Previous Peak Cost ({self._serial_number}/{self._mpan})'
+
+    @property
+    def device_class(self):
+        return SensorDeviceClass.MONETARY
+
+    @property
+    def state_class(self):
+        return SensorStateClass.TOTAL
+
+    @property
+    def native_unit_of_measurement(self):
+        return "GBP"
+
+    @property
+    def icon(self):
+        return "mdi:currency-gbp"
+
+    @property
+    def extra_state_attributes(self):
+        return self._attributes
+
+    @property
+    def last_reset(self):
+        return self._last_reset
+
+    @property
+    def native_value(self):
+        return self._state
+
+    @property
+    def should_poll(self):
+        return True
+
+    async def async_update(self):
+        await super().async_update()
+        if not self.enabled:
+            return
+
+        result: PreviousConsumptionCoordinatorResult = (
+            self.coordinator.data if self.coordinator is not None and self.coordinator.data is not None else None
+        )
+        split = calculate_electricity_peak_offpeak(
+            result.consumption if result else None,
+            result.rates if result else None,
+            result.standing_charge if result else None,
+        )
+        if split is not None:
+            self._state = split["peak_cost"]
+            self._last_reset = split["last_reset"]
+            self._attributes.update({
+                "is_economy_7": split["is_economy_7"],
+                "offpeak_cost": split["offpeak_cost"],
+                "standing_charge": split["standing_charge"],
+            })
+        self._attributes = dict_to_typed_dict(self._attributes)
+
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        state = await self.async_get_last_state()
+        last_sensor_state = await self.async_get_last_sensor_data()
+        if state is not None and last_sensor_state is not None and self._state is None:
+            self._state = None if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN) else last_sensor_state.native_value
+            self._attributes = dict_to_typed_dict(state.attributes)
+
+
+class EDFEnergyPreviousElectricityOffPeakCost(CoordinatorEntity, EDFEnergyElectricitySensor, RestoreSensor):
+    """Yesterday's off-peak-rate electricity cost in GBP."""
+
+    def __init__(self, hass: HomeAssistant, coordinator, meter, point):
+        CoordinatorEntity.__init__(self, coordinator)
+        EDFEnergyElectricitySensor.__init__(self, hass, meter, point)
+        self._state = None
+        self._last_reset = None
+
+    @property
+    def unique_id(self):
+        return f'edf_energy_electricity_{self._serial_number}_{self._mpan}{self._export_id_addition}_previous_offpeak_cost'
+
+    @property
+    def name(self):
+        return f'EDF {self._export_name_addition}Electricity Previous Off-Peak Cost ({self._serial_number}/{self._mpan})'
+
+    @property
+    def device_class(self):
+        return SensorDeviceClass.MONETARY
+
+    @property
+    def state_class(self):
+        return SensorStateClass.TOTAL
+
+    @property
+    def native_unit_of_measurement(self):
+        return "GBP"
+
+    @property
+    def icon(self):
+        return "mdi:currency-gbp"
+
+    @property
+    def extra_state_attributes(self):
+        return self._attributes
+
+    @property
+    def last_reset(self):
+        return self._last_reset
+
+    @property
+    def native_value(self):
+        return self._state
+
+    @property
+    def should_poll(self):
+        return True
+
+    async def async_update(self):
+        await super().async_update()
+        if not self.enabled:
+            return
+
+        result: PreviousConsumptionCoordinatorResult = (
+            self.coordinator.data if self.coordinator is not None and self.coordinator.data is not None else None
+        )
+        split = calculate_electricity_peak_offpeak(
+            result.consumption if result else None,
+            result.rates if result else None,
+            result.standing_charge if result else None,
+        )
+        if split is not None:
+            self._state = split["offpeak_cost"]
+            self._last_reset = split["last_reset"]
+            self._attributes.update({
+                "is_economy_7": split["is_economy_7"],
+                "peak_cost": split["peak_cost"],
+            })
+        self._attributes = dict_to_typed_dict(self._attributes)
+
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        state = await self.async_get_last_state()
+        last_sensor_state = await self.async_get_last_sensor_data()
+        if state is not None and last_sensor_state is not None and self._state is None:
+            self._state = None if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN) else last_sensor_state.native_value
+            self._attributes = dict_to_typed_dict(state.attributes)

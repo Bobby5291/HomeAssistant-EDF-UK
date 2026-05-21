@@ -22,12 +22,21 @@ def _classify_tariff(tariff_code: str) -> str:
     """Return a human-readable tariff type label from the tariff code."""
     if not tariff_code:
         return "Unknown"
+    upper = tariff_code.upper()
+    # Check product code for named dynamic tariffs before parsing parts
+    if "FREEPHASE" in upper or "FREE_PHASE" in upper or "FREE-PHASE" in upper:
+        return "Dynamic / FreePhase"
+    if "FREEEV" in upper or "FREE_EV" in upper:
+        return "Dynamic / FreeEV"
     parts = get_tariff_parts(tariff_code)
     if parts is None:
         return "Unknown"
     rate = (parts.rate or "").upper()
+    product = (parts.product_code or "").upper()
     if "EV" in rate:
         return "EV"
+    if "FREEPHASE" in product or "FREE" in product and "HH" in rate:
+        return "Dynamic / FreePhase"
     if "HH" in rate:
         return "Smart / Half-Hourly"
     if "2R" in rate or "FLAT2R" in rate or "E7" in rate:

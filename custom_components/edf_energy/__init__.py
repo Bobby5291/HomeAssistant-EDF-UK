@@ -22,6 +22,10 @@ from .coordinators.annual_gas_consumption import async_setup_annual_gas_consumpt
 from .coordinators.electricity_meter_readings import async_setup_electricity_meter_readings_coordinator
 from .coordinators.gas_meter_readings import async_setup_gas_meter_readings_coordinator
 from .coordinators.account_transactions import async_setup_account_transactions_coordinator
+from .coordinators.consumption_cost_tracker import (
+    async_setup_electricity_cost_tracker_coordinator,
+    async_setup_gas_cost_tracker_coordinator,
+)
 
 from .utils.error import api_exception_to_string
 from .storage.account import async_load_cached_account, async_save_cached_account
@@ -229,6 +233,12 @@ async def async_setup_dependencies(hass, config):
             )
             await readings_coordinator.async_config_entry_first_refresh()
 
+            # Cost tracker (daily/weekly/monthly)
+            cost_tracker_coordinator = await async_setup_electricity_cost_tracker_coordinator(
+                hass, account_id, client, mpan, serial_number
+            )
+            await cost_tracker_coordinator.async_config_entry_first_refresh()
+
             # Live smart meter consumption (only if user has SMETS2 and opted in)
             if supports_live_consumption and device_id is not None:
                 coordinator = await async_create_current_consumption_coordinator(
@@ -278,6 +288,12 @@ async def async_setup_dependencies(hass, config):
                 hass, account_id, client, mprn, serial_number
             )
             await gas_readings_coordinator.async_config_entry_first_refresh()
+
+            # Gas cost tracker (daily/weekly/monthly)
+            gas_cost_tracker_coordinator = await async_setup_gas_cost_tracker_coordinator(
+                hass, account_id, client, mprn, serial_number
+            )
+            await gas_cost_tracker_coordinator.async_config_entry_first_refresh()
 
     # -------------------------------------------------------------------------
     # Account transactions coordinator

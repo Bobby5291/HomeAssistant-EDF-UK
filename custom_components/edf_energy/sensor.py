@@ -22,6 +22,7 @@ from .electricity.current_sensors import (
     EDFEnergyCurrentAccumulativeElectricityConsumption,
     EDFEnergyCurrentAccumulativeElectricityCost,
 )
+from .electricity.current_total_export import EDFEnergyCurrentTotalElectricityExport
 from .electricity.previous_consumption import (
     EDFEnergyPreviousAccumulativeElectricityConsumption,
     EDFEnergyPreviousAccumulativeElectricityCost,
@@ -48,6 +49,7 @@ from .gas.previous_consumption import (
     EDFEnergyPreviousAccumulativeGasConsumption,
     EDFEnergyPreviousAccumulativeGasCost,
 )
+from .gas.previous_consumption_m3 import EDFEnergyPreviousAccumulativeGasConsumptionM3
 from .gas.annual_consumption import EDFEnergyGasAnnualQuantity
 from .gas.diagnostics import (
     EDFEnergyGasRatesLastRetrieved,
@@ -225,6 +227,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                     entities.append(EDFEnergyCurrentElectricityConsumption(hass, consumption_coordinator, meter, point))
                     entities.append(EDFEnergyCurrentElectricityDemand(hass, consumption_coordinator, meter, point))
                     entities.append(EDFEnergyCurrentTotalElectricityConsumption(hass, consumption_coordinator, meter, point))
+                    entities.append(EDFEnergyCurrentTotalElectricityExport(hass, consumption_coordinator, meter, point))
 
                     if rates_coordinator is not None and standing_charge_coordinator is not None:
                         entities.append(EDFEnergyCurrentAccumulativeElectricityConsumption(
@@ -279,6 +282,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             if gas_previous_consumption_coordinator is not None:
                 entities.append(EDFEnergyPreviousAccumulativeGasConsumption(hass, gas_previous_consumption_coordinator, meter, point))
                 entities.append(EDFEnergyPreviousAccumulativeGasCost(hass, gas_previous_consumption_coordinator, meter, point))
+                entities.append(EDFEnergyPreviousAccumulativeGasConsumptionM3(hass, gas_previous_consumption_coordinator, meter, point))
                 entities.append(EDFEnergyGasConsumptionLastRetrieved(hass, gas_previous_consumption_coordinator, meter, point))
 
             if gas_readings_coordinator is not None:

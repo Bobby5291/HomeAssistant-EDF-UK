@@ -12,6 +12,7 @@ from .account.balance import (
 from .account.contract import EDFEnergyCanRenewTariff
 from .electricity.target_rate import EDFEnergyElectricityTargetRateBinarySensor
 from .electricity.tomorrow_rates import EDFEnergyElectricityNextDayRatesAvailable
+from .electricity.off_peak import EDFEnergyElectricityOffPeak
 from .intelligent.binary_sensors import EDFEnergyIntelligentOffPeakBinarySensor
 
 from .const import (
@@ -74,6 +75,11 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                 # Tomorrow's rates available binary sensor
                 entities.append(
                     EDFEnergyElectricityNextDayRatesAvailable(hass, rates_coordinator, meter, point)
+                )
+
+                # Off-peak binary sensor (rate-based — shows cheapest rate windows)
+                entities.append(
+                    EDFEnergyElectricityOffPeak(hass, rates_coordinator, meter, point)
                 )
 
     # Intelligent off-peak sensor

@@ -19,6 +19,9 @@ from .coordinators.current_consumption import async_create_current_consumption_c
 from .coordinators.previous_consumption_and_rates import async_create_previous_consumption_and_rates_coordinator
 from .coordinators.annual_electricity_consumption import async_setup_annual_electricity_consumption_coordinator
 from .coordinators.annual_gas_consumption import async_setup_annual_gas_consumption_coordinator
+from .coordinators.electricity_meter_readings import async_setup_electricity_meter_readings_coordinator
+from .coordinators.gas_meter_readings import async_setup_gas_meter_readings_coordinator
+from .coordinators.account_transactions import async_setup_account_transactions_coordinator
 
 from .utils.error import api_exception_to_string
 from .storage.account import async_load_cached_account, async_save_cached_account
@@ -35,6 +38,7 @@ from .const import (
     DATA_ACCOUNT,
     DATA_CURRENT_CONSUMPTION_KEY,
     DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY,
+    DATA_ACCOUNT_TRANSACTIONS_COORDINATOR_KEY,
     DOMAIN,
     REPAIR_ACCOUNT_NOT_FOUND,
     REPAIR_INVALID_CREDENTIALS,
@@ -219,6 +223,12 @@ async def async_setup_dependencies(hass, config):
             )
             await prev_coordinator.async_config_entry_first_refresh()
 
+            # Meter register readings coordinator
+            readings_coordinator = await async_setup_electricity_meter_readings_coordinator(
+                hass, account_id, client, mpan, serial_number
+            )
+            await readings_coordinator.async_config_entry_first_refresh()
+
             # Live smart meter consumption (only if user has SMETS2 and opted in)
             if supports_live_consumption and device_id is not None:
                 coordinator = await async_create_current_consumption_coordinator(
@@ -262,6 +272,18 @@ async def async_setup_dependencies(hass, config):
                 hass, account_id, client, mprn, serial_number, is_electricity=False
             )
             await gas_prev_coordinator.async_config_entry_first_refresh()
+
+            # Gas meter register readings coordinator
+            gas_readings_coordinator = await async_setup_gas_meter_readings_coordinator(
+                hass, account_id, client, mprn, serial_number
+            )
+            await gas_readings_coordinator.async_config_entry_first_refresh()
+
+    # -------------------------------------------------------------------------
+    # Account transactions coordinator
+    # -------------------------------------------------------------------------
+    transactions_coordinator = await async_setup_account_transactions_coordinator(hass, account_id, client)
+    await transactions_coordinator.async_config_entry_first_refresh()
 
     # -------------------------------------------------------------------------
     # Account info coordinator — polls account balance, tariff etc every 60 mins

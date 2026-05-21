@@ -41,11 +41,14 @@ from .account.balance import (
     EDFEnergyOverdueBalance,
     EDFEnergyRecommendedBalanceAdjustment,
 )
-from .account.tariff import EDFEnergyElectricityTariff
+from .account.tariff import EDFEnergyElectricityTariff, EDFEnergyElectricityTariffType
 from .account.contract import (
     EDFEnergyElectricityContractEnd,
     EDFEnergyGasContractEnd,
 )
+from .account.payment import EDFEnergyDirectDebitAmount, EDFEnergyLastPayment
+from .electricity.meter_reading import EDFEnergyElectricityMeterReading
+from .gas.meter_reading import EDFEnergyGasMeterReading
 
 from .const import (
     CONFIG_ACCOUNT_ID,
@@ -57,9 +60,12 @@ from .const import (
     DATA_CLIENT,
     DATA_ANNUAL_ELECTRICITY_CONSUMPTION_COORDINATOR_KEY,
     DATA_ANNUAL_GAS_CONSUMPTION_COORDINATOR_KEY,
+    DATA_ACCOUNT_TRANSACTIONS_COORDINATOR_KEY,
     DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY,
+    DATA_ELECTRICITY_METER_READINGS_COORDINATOR_KEY,
     DATA_ELECTRICITY_RATES_COORDINATOR_KEY,
     DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY,
+    DATA_GAS_METER_READINGS_COORDINATOR_KEY,
     DATA_GAS_RATES_COORDINATOR_KEY,
     DATA_GAS_STANDING_CHARGE_COORDINATOR_KEY,
     DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY,
@@ -92,6 +98,15 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     entities.append(EDFEnergyOverdueBalance(hass, account_coordinator, account_id))
     entities.append(EDFEnergyRecommendedBalanceAdjustment(hass, account_coordinator, account_id))
 
+    # Direct debit
+    entities.append(EDFEnergyDirectDebitAmount(hass, account_coordinator, account_id))
+
+    # Last payment (from transactions coordinator)
+    transactions_coordinator_key = DATA_ACCOUNT_TRANSACTIONS_COORDINATOR_KEY.format(account_id)
+    transactions_coordinator = hass.data[DOMAIN][account_id].get(transactions_coordinator_key)
+    if transactions_coordinator is not None:
+        entities.append(EDFEnergyLastPayment(hass, transactions_coordinator, account_id))
+
     # -------------------------------------------------------------------------
     # Electricity meter sensors — one set per active meter
     # -------------------------------------------------------------------------
@@ -106,6 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 
         # Per-MPAN sensors
         entities.append(EDFEnergyElectricityTariff(hass, account_coordinator, account_id, mpan))
+        entities.append(EDFEnergyElectricityTariffType(hass, account_coordinator, account_id, mpan))
         entities.append(EDFEnergyElectricityContractEnd(hass, account_coordinator, account_id, mpan))
 
         annual_elec_coordinator_key = DATA_ANNUAL_ELECTRICITY_CONSUMPTION_COORDINATOR_KEY.format(mpan)
@@ -122,10 +138,12 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             rates_coordinator_key = DATA_ELECTRICITY_RATES_COORDINATOR_KEY.format(mpan, serial_number)
             standing_charge_coordinator_key = DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY.format(mpan, serial_number)
             previous_consumption_coordinator_key = DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY.format(mpan, serial_number)
+            readings_coordinator_key = DATA_ELECTRICITY_METER_READINGS_COORDINATOR_KEY.format(mpan, serial_number)
 
             rates_coordinator = hass.data[DOMAIN][account_id].get(rates_coordinator_key)
             standing_charge_coordinator = hass.data[DOMAIN][account_id].get(standing_charge_coordinator_key)
             previous_consumption_coordinator = hass.data[DOMAIN][account_id].get(previous_consumption_coordinator_key)
+            readings_coordinator = hass.data[DOMAIN][account_id].get(readings_coordinator_key)
 
             if rates_coordinator is None:
                 _LOGGER.warning(f"Rates coordinator not found for {mpan}/{serial_number} — skipping rate sensors")
@@ -141,6 +159,10 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             # Standing charge
             if standing_charge_coordinator is not None:
                 entities.append(EDFEnergyElectricityCurrentStandingCharge(hass, standing_charge_coordinator, meter, point))
+
+            # Meter register reading
+            if readings_coordinator is not None:
+                entities.append(EDFEnergyElectricityMeterReading(hass, readings_coordinator, meter, point))
 
             # Previous day consumption + cost
             if previous_consumption_coordinator is not None:
@@ -185,10 +207,12 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             gas_rates_coordinator_key = DATA_GAS_RATES_COORDINATOR_KEY.format(mprn, serial_number)
             gas_standing_charge_coordinator_key = DATA_GAS_STANDING_CHARGE_COORDINATOR_KEY.format(mprn, serial_number)
             gas_previous_consumption_coordinator_key = DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY.format(mprn, serial_number)
+            gas_readings_coordinator_key = DATA_GAS_METER_READINGS_COORDINATOR_KEY.format(mprn, serial_number)
 
             gas_rates_coordinator = hass.data[DOMAIN][account_id].get(gas_rates_coordinator_key)
             gas_standing_charge_coordinator = hass.data[DOMAIN][account_id].get(gas_standing_charge_coordinator_key)
             gas_previous_consumption_coordinator = hass.data[DOMAIN][account_id].get(gas_previous_consumption_coordinator_key)
+            gas_readings_coordinator = hass.data[DOMAIN][account_id].get(gas_readings_coordinator_key)
 
             if gas_rates_coordinator is None:
                 _LOGGER.warning(f"Gas rates coordinator not found for {mprn}/{serial_number} — skipping gas rate sensors")
@@ -204,5 +228,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             if gas_previous_consumption_coordinator is not None:
                 entities.append(EDFEnergyPreviousAccumulativeGasConsumption(hass, gas_previous_consumption_coordinator, meter, point))
                 entities.append(EDFEnergyPreviousAccumulativeGasCost(hass, gas_previous_consumption_coordinator, meter, point))
+
+            if gas_readings_coordinator is not None:
+                entities.append(EDFEnergyGasMeterReading(hass, gas_readings_coordinator, meter, point))
 
     async_add_entities(entities)

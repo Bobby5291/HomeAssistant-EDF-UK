@@ -59,6 +59,11 @@ account_query = '''query {{
     shouldReviewPayments
     recommendedBalanceAdjustment
     canRenewTariff
+    directDebitInstruction {{
+      paymentDay
+      paymentAmount
+      status
+    }}
 
     electricityAgreements(active: true) {{
       meterPoint {{
@@ -148,6 +153,28 @@ account_query = '''query {{
     }}
   }}
 }}'''
+
+transactions_query = '''query AccountTransactions($accountNumber: String!) {
+  account(accountNumber: $accountNumber) {
+    transactions(first: 10) {
+      edges {
+        node {
+          postedDate
+          ... on Payment {
+            amounts { grossAmount }
+            isCredit
+            title
+          }
+          ... on Charge {
+            amounts { grossAmount }
+            isCredit
+            title
+          }
+        }
+      }
+    }
+  }
+}'''
 
 live_consumption_query = '''query SmartMeterTelemetry(
   $deviceId: String!,
@@ -491,6 +518,9 @@ class EDFEnergyApiClient:
             "should_review_payments": account.get("shouldReviewPayments"),
             "recommended_balance_adjustment": account.get("recommendedBalanceAdjustment"),
             "can_renew_tariff": account.get("canRenewTariff"),
+            "direct_debit_payment_day": account["directDebitInstruction"].get("paymentDay") if account.get("directDebitInstruction") else None,
+            "direct_debit_amount": account["directDebitInstruction"].get("paymentAmount") if account.get("directDebitInstruction") else None,
+            "direct_debit_status": account["directDebitInstruction"].get("status") if account.get("directDebitInstruction") else None,
             "electricity_meter_points": list(map(self.map_electricity_meters,
               account["electricityAgreements"]
                 if "electricityAgreements" in account and account["electricityAgreements"] is not None
@@ -509,6 +539,82 @@ class EDFEnergyApiClient:
       _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
       raise TimeoutException()
 
+    return None
+
+  async def async_get_account_transactions(self, account_id: str):
+    """Get recent account transactions (payments and charges)."""
+    await self.async_refresh_token()
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {
+        "query": transactions_query,
+        "variables": {"accountNumber": account_id},
+      }
+      headers = {"Authorization": self._graphql_token, "context": "account-transactions"}
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url, ignore_errors=True)
+        if (body is not None and
+            "data" in body and
+            "account" in body["data"] and
+            body["data"]["account"] is not None and
+            "transactions" in body["data"]["account"]):
+          edges = body["data"]["account"]["transactions"].get("edges") or []
+          results = []
+          for edge in edges:
+            node = edge.get("node") or {}
+            amounts = node.get("amounts") or {}
+            gross = amounts.get("grossAmount")
+            results.append({
+              "posted_date": node.get("postedDate"),
+              "gross_amount": float(gross) if gross is not None else None,
+              "is_credit": node.get("isCredit"),
+              "title": node.get("title"),
+            })
+          return results
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
+    return None
+
+  async def async_get_electricity_meter_readings(self, mpan: str, serial_number: str):
+    """Get the latest electricity meter register readings."""
+    await self.async_refresh_token()
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/electricity-meter-points/{mpan}/meters/{serial_number}/readings/?page_size=1'
+      headers = {"Authorization": self._graphql_token, "context": "electricity-readings"}
+      async with client.get(url, headers=headers) as response:
+        data = await self.__async_read_response__(response, url)
+        if data is not None and "results" in data and len(data["results"]) > 0:
+          r = data["results"][0]
+          return {
+            "read_at": r.get("interval_end") or r.get("read_at") or r.get("readAt"),
+            "value": float(r["value"]) if r.get("value") is not None else None,
+          }
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
+    return None
+
+  async def async_get_gas_meter_readings(self, mprn: str, serial_number: str):
+    """Get the latest gas meter register readings."""
+    await self.async_refresh_token()
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/gas-meter-points/{mprn}/meters/{serial_number}/readings/?page_size=1'
+      headers = {"Authorization": self._graphql_token, "context": "gas-readings"}
+      async with client.get(url, headers=headers) as response:
+        data = await self.__async_read_response__(response, url)
+        if data is not None and "results" in data and len(data["results"]) > 0:
+          r = data["results"][0]
+          return {
+            "read_at": r.get("interval_end") or r.get("read_at") or r.get("readAt"),
+            "value": float(r["value"]) if r.get("value") is not None else None,
+          }
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
     return None
 
   async def async_get_extended_electricity_consumption(self, mpan: str):

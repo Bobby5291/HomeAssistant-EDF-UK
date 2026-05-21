@@ -9,6 +9,12 @@ from .electricity.current_rate import EDFEnergyElectricityCurrentRate
 from .electricity.next_rate import EDFEnergyElectricityNextRate
 from .electricity.previous_rate import EDFEnergyElectricityPreviousRate
 from .electricity.standing_charge import EDFEnergyElectricityCurrentStandingCharge
+from .electricity.day_night_rates import EDFEnergyElectricityDayRate, EDFEnergyElectricityNightRate
+from .electricity.annual_consumption import (
+    EDFEnergyElectricityEACStandard,
+    EDFEnergyElectricityEACDay,
+    EDFEnergyElectricityEACNight,
+)
 from .electricity.current_sensors import (
     EDFEnergyCurrentElectricityConsumption,
     EDFEnergyCurrentElectricityDemand,
@@ -28,6 +34,7 @@ from .gas.previous_consumption import (
     EDFEnergyPreviousAccumulativeGasConsumption,
     EDFEnergyPreviousAccumulativeGasCost,
 )
+from .gas.annual_consumption import EDFEnergyGasAnnualQuantity
 from .account.balance import (
     EDFEnergyAccountBalance,
     EDFEnergyProjectedBalance,
@@ -35,6 +42,10 @@ from .account.balance import (
     EDFEnergyRecommendedBalanceAdjustment,
 )
 from .account.tariff import EDFEnergyElectricityTariff
+from .account.contract import (
+    EDFEnergyElectricityContractEnd,
+    EDFEnergyGasContractEnd,
+)
 
 from .const import (
     CONFIG_ACCOUNT_ID,
@@ -44,6 +55,8 @@ from .const import (
     DATA_ACCOUNT,
     DATA_ACCOUNT_COORDINATOR,
     DATA_CLIENT,
+    DATA_ANNUAL_ELECTRICITY_CONSUMPTION_COORDINATOR_KEY,
+    DATA_ANNUAL_GAS_CONSUMPTION_COORDINATOR_KEY,
     DATA_CURRENT_CONSUMPTION_COORDINATOR_KEY,
     DATA_ELECTRICITY_RATES_COORDINATOR_KEY,
     DATA_ELECTRICITY_STANDING_CHARGE_COORDINATOR_KEY,
@@ -91,8 +104,16 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     for point in account_info.get("electricity_meter_points", []) or []:
         mpan = point["mpan"]
 
-        # Tariff name sensor
+        # Per-MPAN sensors
         entities.append(EDFEnergyElectricityTariff(hass, account_coordinator, account_id, mpan))
+        entities.append(EDFEnergyElectricityContractEnd(hass, account_coordinator, account_id, mpan))
+
+        annual_elec_coordinator_key = DATA_ANNUAL_ELECTRICITY_CONSUMPTION_COORDINATOR_KEY.format(mpan)
+        annual_elec_coordinator = hass.data[DOMAIN][account_id].get(annual_elec_coordinator_key)
+        if annual_elec_coordinator is not None:
+            entities.append(EDFEnergyElectricityEACStandard(hass, annual_elec_coordinator, mpan))
+            entities.append(EDFEnergyElectricityEACDay(hass, annual_elec_coordinator, mpan))
+            entities.append(EDFEnergyElectricityEACNight(hass, annual_elec_coordinator, mpan))
 
         for meter in point["meters"]:
             serial_number = meter["serial_number"]
@@ -114,6 +135,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             entities.append(EDFEnergyElectricityCurrentRate(hass, rates_coordinator, meter, point))
             entities.append(EDFEnergyElectricityNextRate(hass, rates_coordinator, meter, point))
             entities.append(EDFEnergyElectricityPreviousRate(hass, rates_coordinator, meter, point))
+            entities.append(EDFEnergyElectricityDayRate(hass, rates_coordinator, meter, point))
+            entities.append(EDFEnergyElectricityNightRate(hass, rates_coordinator, meter, point))
 
             # Standing charge
             if standing_charge_coordinator is not None:
@@ -147,6 +170,14 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     # -------------------------------------------------------------------------
     for point in account_info.get("gas_meter_points", []) or []:
         mprn = point["mprn"]
+
+        # Per-MPRN sensors
+        entities.append(EDFEnergyGasContractEnd(hass, account_coordinator, account_id, mprn))
+
+        annual_gas_coordinator_key = DATA_ANNUAL_GAS_CONSUMPTION_COORDINATOR_KEY.format(mprn)
+        annual_gas_coordinator = hass.data[DOMAIN][account_id].get(annual_gas_coordinator_key)
+        if annual_gas_coordinator is not None:
+            entities.append(EDFEnergyGasAnnualQuantity(hass, annual_gas_coordinator, mprn))
 
         for meter in point["meters"]:
             serial_number = meter["serial_number"]

@@ -34,6 +34,23 @@ api_token_refresh_query = '''mutation {{
   }}
 }}'''
 
+extended_electricity_consumption_query = '''query ExtendedAnnualElectricityConsumption($mpan: String!) {
+  extendedAnnualElectricityConsumption(mpan: $mpan) {
+    eacStandard
+    eacDay
+    eacNight
+  }
+}'''
+
+annual_gas_consumption_query = '''query AnnualGasConsumption($mprn: String!) {
+  annualGasConsumption(mprn: $mprn) {
+    aq
+    supplierName
+    supplierEffectiveFromDate
+    aqEffectiveFromDate
+  }
+}'''
+
 account_query = '''query {{
   account(accountNumber: "{account_id}") {{
     balance
@@ -41,6 +58,7 @@ account_query = '''query {{
     projectedBalance
     shouldReviewPayments
     recommendedBalanceAdjustment
+    canRenewTariff
 
     electricityAgreements(active: true) {{
       meterPoint {{
@@ -472,6 +490,7 @@ class EDFEnergyApiClient:
             "projected_balance": account.get("projectedBalance"),
             "should_review_payments": account.get("shouldReviewPayments"),
             "recommended_balance_adjustment": account.get("recommendedBalanceAdjustment"),
+            "can_renew_tariff": account.get("canRenewTariff"),
             "electricity_meter_points": list(map(self.map_electricity_meters,
               account["electricityAgreements"]
                 if "electricityAgreements" in account and account["electricityAgreements"] is not None
@@ -490,6 +509,63 @@ class EDFEnergyApiClient:
       _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
       raise TimeoutException()
 
+    return None
+
+  async def async_get_extended_electricity_consumption(self, mpan: str):
+    """Get extended annual electricity consumption estimates (EAC) for an MPAN."""
+    await self.async_refresh_token()
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {
+        "query": extended_electricity_consumption_query,
+        "variables": {"mpan": mpan},
+      }
+      headers = {"Authorization": self._graphql_token, "context": "extended-electricity-consumption"}
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url)
+        if (body is not None and
+            "data" in body and
+            "extendedAnnualElectricityConsumption" in body["data"] and
+            body["data"]["extendedAnnualElectricityConsumption"] is not None):
+          data = body["data"]["extendedAnnualElectricityConsumption"]
+          return {
+            "eac_standard": float(data["eacStandard"]) if data.get("eacStandard") is not None else None,
+            "eac_day": float(data["eacDay"]) if data.get("eacDay") is not None else None,
+            "eac_night": float(data["eacNight"]) if data.get("eacNight") is not None else None,
+          }
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
+    return None
+
+  async def async_get_annual_gas_consumption(self, mprn: str):
+    """Get annual gas consumption (AQ) for an MPRN."""
+    await self.async_refresh_token()
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {
+        "query": annual_gas_consumption_query,
+        "variables": {"mprn": mprn},
+      }
+      headers = {"Authorization": self._graphql_token, "context": "annual-gas-consumption"}
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url)
+        if (body is not None and
+            "data" in body and
+            "annualGasConsumption" in body["data"] and
+            body["data"]["annualGasConsumption"] is not None):
+          data = body["data"]["annualGasConsumption"]
+          return {
+            "aq": float(data["aq"]) if data.get("aq") is not None else None,
+            "supplier_name": data.get("supplierName"),
+            "supplier_effective_from": data.get("supplierEffectiveFromDate"),
+            "aq_effective_from": data.get("aqEffectiveFromDate"),
+          }
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
     return None
 
   async def async_get_smart_meter_consumption(self, device_id: str, period_from: datetime, period_to: datetime):

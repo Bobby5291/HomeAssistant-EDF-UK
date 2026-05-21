@@ -536,26 +536,50 @@ class EDFEnergyApiClient:
 
     return None
 
-  async def async_get_electricity_rates(self, product_code: str, tariff_code: str, period_from: datetime, period_to: datetime):
-    """Get the current electricity rates"""
+  async def __async_fetch_electricity_rates_endpoint(self, client, product_code: str, tariff_code: str, endpoint: str, period_from: datetime, period_to: datetime):
+    """Fetch all pages from a single electricity rates endpoint. Returns list or None on failure."""
     results = []
+    page = 1
+    has_more = True
+    period_from_str = period_from.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    period_to_str = period_to.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    headers = {"Authorization": self._graphql_token, "context": "electricity-rates"}
 
+    while has_more:
+      url = f'{self._base_url}/v1/products/{product_code}/electricity-tariffs/{tariff_code}/{endpoint}?period_from={period_from_str}&period_to={period_to_str}&page={page}'
+      async with client.get(url, headers=headers) as response:
+        data = await self.__async_read_response__(response, url)
+        if data is None:
+          return None
+        results = results + rates_to_thirty_minute_increments(data, period_from, period_to, tariff_code)
+        has_more = "next" in data and data["next"] is not None
+        if has_more:
+          page += 1
+
+    return results
+
+  async def async_get_electricity_rates(self, product_code: str, tariff_code: str, period_from: datetime, period_to: datetime):
+    """Get electricity rates, handling single-rate and day/night tariffs."""
     try:
       client = self._create_client_session()
-      page = 1
-      has_more_rates = True
-      while has_more_rates:
-        url = f'{self._base_url}/v1/products/{product_code}/electricity-tariffs/{tariff_code}/standard-unit-rates?period_from={period_from.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}&period_to={period_to.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}&page={page}'
-        headers = { "Authorization": self._graphql_token, "context": "electricity-rates" }
-        async with client.get(url, headers=headers) as response:
-          data = await self.__async_read_response__(response, url)
-          if data is None:
-            return None
-          else:
-            results = results + rates_to_thirty_minute_increments(data, period_from, period_to, tariff_code)
-            has_more_rates = "next" in data and data["next"] is not None
-            if has_more_rates:
-              page = page + 1
+
+      # Try standard (single-rate) endpoint first
+      results = await self.__async_fetch_electricity_rates_endpoint(
+        client, product_code, tariff_code, "standard-unit-rates", period_from, period_to
+      )
+
+      if results is None:
+        # Tariff has day/night rates — fetch both and combine
+        _LOGGER.debug(f'Standard rates unavailable for {tariff_code}, trying day/night endpoints')
+        day_results = await self.__async_fetch_electricity_rates_endpoint(
+          client, product_code, tariff_code, "day-unit-rates", period_from, period_to
+        ) or []
+        night_results = await self.__async_fetch_electricity_rates_endpoint(
+          client, product_code, tariff_code, "night-unit-rates", period_from, period_to
+        ) or []
+        results = day_results + night_results
+        if not results:
+          return None
 
     except TimeoutError:
       _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')

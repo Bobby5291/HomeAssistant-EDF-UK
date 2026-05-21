@@ -27,8 +27,8 @@ class EDFEnergyElectricityTariff(CoordinatorEntity, EDFEnergyAccountSensor, Rest
 
     def __init__(self, hass: HomeAssistant, coordinator, account_id: str, mpan: str):
         CoordinatorEntity.__init__(self, coordinator)
-        EDFEnergyAccountSensor.__init__(self, hass, account_id)
         self._mpan = mpan
+        EDFEnergyAccountSensor.__init__(self, hass, account_id)
         self._state = None
         self._attributes.update({
             "mpan": mpan,
@@ -38,7 +38,6 @@ class EDFEnergyElectricityTariff(CoordinatorEntity, EDFEnergyAccountSensor, Rest
             "valid_from": None,
             "valid_to": None,
         })
-        self.entity_id = generate_entity_id("sensor.{}", self.unique_id, hass=hass)
 
     @property
     def unique_id(self):

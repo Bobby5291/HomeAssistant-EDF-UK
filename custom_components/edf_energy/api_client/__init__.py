@@ -718,6 +718,244 @@ class EDFEnergyApiClient:
 
     return None
 
+    # ---------------------------------------------------------------------------
+  # Intelligent / EV smart charging
+  # ---------------------------------------------------------------------------
+
+  async def async_get_intelligent_device(self, account_id: str):
+    """Return the first enrolled SmartFlex EV device for the account, or None."""
+    await self.async_refresh_token()
+    query = '''query {{
+  devices(accountNumber: "{account_id}") {{
+    id
+    name
+    deviceType
+    provider
+    integrationDeviceId
+    status {{
+      currentState
+      isSuspended
+    }}
+    preferences {{
+      targetType
+      unit
+      mode
+      schedules {{
+        dayOfWeek
+        time
+        min
+        max
+        upperLimit
+      }}
+    }}
+    ... on SmartFlexVehicle {{
+      make
+      model
+    }}
+    ... on SmartFlexChargePoint {{
+      make
+      model
+    }}
+  }}
+}}'''.format(account_id=account_id)
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {"query": query}
+      headers = {"Authorization": self._graphql_token, "context": "intelligent-device"}
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url, ignore_errors=True)
+        if (body is not None and "data" in body and
+            "devices" in body["data"] and body["data"]["devices"]):
+          devices = body["data"]["devices"]
+          ev_types = {"ELECTRIC_VEHICLES", "BATTERIES"}
+          for d in devices:
+            if d.get("deviceType") in ev_types or d.get("deviceType") is None:
+              prefs = d.get("preferences") or {}
+              schedules = prefs.get("schedules") or []
+              target_time = None
+              target_percentage = None
+              if schedules:
+                first = schedules[0]
+                target_time = first.get("time")
+                raw_min = first.get("min")
+                target_percentage = int(float(raw_min)) if raw_min is not None else None
+              return {
+                "id": d.get("id"),
+                "name": d.get("name"),
+                "device_type": d.get("deviceType"),
+                "make": d.get("make"),
+                "model": d.get("model"),
+                "current_state": (d.get("status") or {}).get("currentState"),
+                "is_suspended": (d.get("status") or {}).get("isSuspended", False),
+                "mode": prefs.get("mode"),
+                "unit": prefs.get("unit"),
+                "target_time": target_time,
+                "target_percentage": target_percentage,
+              }
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
+    return None
+
+  async def async_get_intelligent_dispatches(self, account_id: str, device_id: str):
+    """Return planned and completed dispatches for an EV device."""
+    await self.async_refresh_token()
+    planned_query = '''query {{
+  flexPlannedDispatches(deviceId: "{device_id}") {{
+    start
+    end
+    type
+    energyAddedKwh
+  }}
+}}'''.format(device_id=device_id)
+    completed_query = '''query {{
+  completedDispatches(accountNumber: "{account_id}") {{
+    start
+    end
+    startDt
+    endDt
+    deltaKwh
+    delta
+    meta {{
+      source
+      location
+    }}
+  }}
+}}'''.format(account_id=account_id)
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/graphql/'
+      headers = {"Authorization": self._graphql_token, "context": "intelligent-dispatches"}
+      planned = []
+      completed = []
+      async with client.post(url, json={"query": planned_query}, headers=headers) as response:
+        body = await self.__async_read_response__(response, url, ignore_errors=True)
+        if body is not None and "data" in body and "flexPlannedDispatches" in body["data"]:
+          raw = body["data"]["flexPlannedDispatches"] or []
+          for d in raw:
+            start = parse_datetime(d["start"]) if d.get("start") else None
+            end = parse_datetime(d["end"]) if d.get("end") else None
+            if start and end:
+              planned.append({
+                "start": as_utc(start),
+                "end": as_utc(end),
+                "type": d.get("type"),
+                "energy_kwh": float(d["energyAddedKwh"]) if d.get("energyAddedKwh") is not None else None,
+              })
+      async with client.post(url, json={"query": completed_query}, headers=headers) as response:
+        body = await self.__async_read_response__(response, url, ignore_errors=True)
+        if body is not None and "data" in body and "completedDispatches" in body["data"]:
+          raw = body["data"]["completedDispatches"] or []
+          for d in raw:
+            start_raw = d.get("startDt") or d.get("start")
+            end_raw = d.get("endDt") or d.get("end")
+            start = parse_datetime(start_raw) if start_raw else None
+            end = parse_datetime(end_raw) if end_raw else None
+            if start and end:
+              meta = d.get("meta") or {}
+              completed.append({
+                "start": as_utc(start),
+                "end": as_utc(end),
+                "delta_kwh": float(d["deltaKwh"]) if d.get("deltaKwh") is not None else None,
+                "delta": float(d["delta"]) if d.get("delta") is not None else None,
+                "source": meta.get("source"),
+                "location": meta.get("location"),
+              })
+      return {"planned": planned, "completed": completed}
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
+    return None
+
+  async def async_set_intelligent_smart_control(self, device_id: str, suspend: bool) -> bool:
+    """Suspend or unsuspend smart charging for a device."""
+    await self.async_refresh_token()
+    action = "SUSPEND" if suspend else "UNSUSPEND"
+    mutation = '''mutation {{
+  updateDeviceSmartControl(input: {{ deviceId: "{device_id}", action: {action} }}) {{
+    id
+    status {{
+      currentState
+      isSuspended
+    }}
+  }}
+}}'''.format(device_id=device_id, action=action)
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {"query": mutation}
+      headers = {"Authorization": self._graphql_token, "context": "intelligent-smart-control"}
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url, ignore_errors=True)
+        if body is not None and "data" in body and "updateDeviceSmartControl" in body["data"]:
+          return body["data"]["updateDeviceSmartControl"] is not None
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
+    return False
+
+  async def async_set_intelligent_boost_charge(self, device_id: str, boost: bool) -> bool:
+    """Start (BOOST) or cancel (CANCEL) a bump charge."""
+    await self.async_refresh_token()
+    action = "BOOST" if boost else "CANCEL"
+    mutation = '''mutation {{
+  updateBoostCharge(input: {{ deviceId: "{device_id}", action: {action} }}) {{
+    id
+    status {{
+      currentState
+      isSuspended
+    }}
+  }}
+}}'''.format(device_id=device_id, action=action)
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {"query": mutation}
+      headers = {"Authorization": self._graphql_token, "context": "intelligent-boost-charge"}
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url, ignore_errors=True)
+        if body is not None and "data" in body and "updateBoostCharge" in body["data"]:
+          return body["data"]["updateBoostCharge"] is not None
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
+    return False
+
+  async def async_set_intelligent_preferences(self, device_id: str, target_percentage: int, target_time: str) -> bool:
+    """Set charge target percentage and ready-by time (HH:MM) for all days."""
+    await self.async_refresh_token()
+    days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+    schedules = [{"dayOfWeek": d, "time": target_time, "min": target_percentage, "max": 100} for d in days]
+    try:
+      client = self._create_client_session()
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {
+        "query": """mutation SetDevicePreferences($input: SmartFlexDevicePreferencesInput!) {
+  setDevicePreferences(input: $input) {
+    id
+    preferences { targetType unit mode schedules { dayOfWeek time min max } }
+  }
+}""",
+        "variables": {
+          "input": {
+            "deviceId": device_id,
+            "mode": "CHARGE",
+            "unit": "PERCENTAGE",
+            "schedules": schedules,
+          }
+        },
+      }
+      headers = {"Authorization": self._graphql_token, "context": "intelligent-set-preferences"}
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url, ignore_errors=True)
+        if body is not None and "data" in body and "setDevicePreferences" in body["data"]:
+          return body["data"]["setDevicePreferences"] is not None
+    except TimeoutError:
+      _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
+      raise TimeoutException()
+    return False
+
   async def __async_fetch_electricity_rates_endpoint(self, client, product_code: str, tariff_code: str, endpoint: str, period_from: datetime, period_to: datetime):
     """Fetch all pages from a single electricity rates endpoint. Returns list or None on failure."""
     results = []

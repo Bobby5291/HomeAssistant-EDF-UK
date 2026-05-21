@@ -12,12 +12,15 @@ from .account.balance import (
 from .account.contract import EDFEnergyCanRenewTariff
 from .electricity.target_rate import EDFEnergyElectricityTargetRateBinarySensor
 from .electricity.tomorrow_rates import EDFEnergyElectricityNextDayRatesAvailable
+from .intelligent.binary_sensors import EDFEnergyIntelligentOffPeakBinarySensor
 
 from .const import (
     CONFIG_ACCOUNT_ID,
     DATA_ACCOUNT,
     DATA_ACCOUNT_COORDINATOR,
     DATA_ELECTRICITY_RATES_COORDINATOR_KEY,
+    DATA_INTELLIGENT_COORDINATOR_KEY,
+    DATA_INTELLIGENT_DEVICE_KEY,
     DOMAIN,
 )
 
@@ -72,5 +75,14 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                 entities.append(
                     EDFEnergyElectricityNextDayRatesAvailable(hass, rates_coordinator, meter, point)
                 )
+
+    # Intelligent off-peak sensor
+    intelligent_device = hass.data[DOMAIN][account_id].get(DATA_INTELLIGENT_DEVICE_KEY.format(account_id))
+    if intelligent_device is not None:
+        ev_device_id = intelligent_device["id"]
+        intelligent_coordinator_key = DATA_INTELLIGENT_COORDINATOR_KEY.format(ev_device_id)
+        intelligent_coordinator = hass.data[DOMAIN][account_id].get(intelligent_coordinator_key)
+        if intelligent_coordinator is not None:
+            entities.append(EDFEnergyIntelligentOffPeakBinarySensor(hass, intelligent_coordinator, account_id, intelligent_device))
 
     async_add_entities(entities)

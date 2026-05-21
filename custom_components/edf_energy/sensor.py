@@ -74,6 +74,10 @@ from .account.payment import EDFEnergyDirectDebitAmount, EDFEnergyLastPayment
 from .account.diagnostics import EDFEnergyAccountLastRetrieved
 from .electricity.meter_reading import EDFEnergyElectricityMeterReading
 from .gas.meter_reading import EDFEnergyGasMeterReading
+from .intelligent.sensors import (
+    EDFEnergyIntelligentCurrentStateSensor,
+    EDFEnergyIntelligentDispatchesLastRetrieved,
+)
 
 from .const import (
     CONFIG_ACCOUNT_ID,
@@ -96,6 +100,8 @@ from .const import (
     DATA_GAS_RATES_COORDINATOR_KEY,
     DATA_GAS_STANDING_CHARGE_COORDINATOR_KEY,
     DATA_PREVIOUS_CONSUMPTION_COORDINATOR_KEY,
+    DATA_INTELLIGENT_COORDINATOR_KEY,
+    DATA_INTELLIGENT_DEVICE_KEY,
     DOMAIN,
 )
 

@@ -8,7 +8,6 @@
 
 A custom Home Assistant integration for retrieving and monitoring EDF UK smart meter energy data directly within Home Assistant.
 
-> ⚠️ This project is currently a work in progress and should be considered experimental. Features, sensors, configuration flows, and APIs may change during development.
 
 The aim of this integration is to provide EDF UK users with a seamless way to access electricity usage, tariff information, and energy monitoring within Home Assistant’s Energy Dashboard ecosystem.
 
@@ -105,6 +104,11 @@ Use at your own risk.
 Contributions, bug reports, feature requests, and testing are all appreciated.
 
 Please open an issue or pull request on GitHub.
+
+---
+
+## Development
+I plant to continue to add new features as this project is still a work in progress
 
 ---
 

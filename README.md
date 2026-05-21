@@ -112,6 +112,10 @@ I plant to continue to add new features as this project is still a work in progr
 
 ---
 
+## Affiliate Link
+https://edfenergy.com/quote/refer-a-friend/bold-mouse-849
+
+--
 ## License
 
 Licensed under the Apache License, Version 2.0.

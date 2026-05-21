@@ -547,14 +547,17 @@ class EDFEnergyApiClient:
 
     while has_more:
       url = f'{self._base_url}/v1/products/{product_code}/electricity-tariffs/{tariff_code}/{endpoint}?period_from={period_from_str}&period_to={period_to_str}&page={page}'
-      async with client.get(url, headers=headers) as response:
-        data = await self.__async_read_response__(response, url)
-        if data is None:
-          return None
-        results = results + rates_to_thirty_minute_increments(data, period_from, period_to, tariff_code)
-        has_more = "next" in data and data["next"] is not None
-        if has_more:
-          page += 1
+      try:
+        async with client.get(url, headers=headers) as response:
+          data = await self.__async_read_response__(response, url)
+          if data is None:
+            return None
+          results = results + rates_to_thirty_minute_increments(data, period_from, period_to, tariff_code)
+          has_more = "next" in data and data["next"] is not None
+          if has_more:
+            page += 1
+      except RequestException:
+        return None
 
     return results
 

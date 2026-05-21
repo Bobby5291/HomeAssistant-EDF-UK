@@ -82,7 +82,7 @@ class EDFEnergyPreviousAccumulativeElectricityConsumption(CoordinatorEntity, EDF
 
     @property
     def entity_registry_enabled_default(self) -> bool:
-        return self._is_smart_meter
+        return True
 
     @property
     def unique_id(self):
@@ -181,7 +181,7 @@ class EDFEnergyPreviousAccumulativeElectricityCost(CoordinatorEntity, EDFEnergyE
 
     @property
     def entity_registry_enabled_default(self) -> bool:
-        return self._is_smart_meter
+        return True
 
     @property
     def unique_id(self):

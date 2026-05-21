@@ -183,3 +183,67 @@ def get_unique_rates(current: datetime, rates: list):
 
     rate_charges.sort()
     return rate_charges
+
+
+def has_peak_rates(total_unique_rates: int) -> bool:
+    """True if the tariff has two or three distinct rate tiers (day/night or three-rate)."""
+    return total_unique_rates in (2, 3)
+
+
+def get_peak_type(total_unique_rates: int, unique_rate_index: int) -> str | None:
+    """Return the peak type label for a given rate index (lowest → off_peak)."""
+    if not has_peak_rates(total_unique_rates):
+        return None
+    if unique_rate_index == 0:
+        return "off_peak"
+    elif unique_rate_index == 1:
+        return "peak" if total_unique_rates == 2 else "standard"
+    elif unique_rate_index == 2:
+        return "peak"
+    return None
+
+
+def get_peak_name(peak_type: str) -> str | None:
+    """Human-readable label for a peak type."""
+    return {"off_peak": "Off Peak", "peak": "Peak", "standard": "Standard"}.get(peak_type)
+
+
+def get_off_peak_times(current: datetime, rates: list) -> list:
+    """Return a list of (start, end) tuples for off-peak windows in the next 48 h.
+
+    Off-peak is defined as any period whose rate is strictly below today's
+    maximum rate.  Returns windows sorted by start time.
+    """
+    if not rates:
+        return []
+
+    window_end = current + timedelta(hours=48)
+    today_start = as_utc(as_local(current).replace(hour=0, minute=0, second=0, microsecond=0))
+    today_end = today_start + timedelta(days=1)
+
+    # Determine today's max rate to classify off-peak
+    max_rate = None
+    for r in rates:
+        if r["start"] >= today_start and r["end"] <= today_end:
+            if max_rate is None or r["value_inc_vat"] > max_rate:
+                max_rate = r["value_inc_vat"]
+
+    if max_rate is None:
+        return []
+
+    windows = []
+    window_start = None
+
+    relevant = [r for r in rates if r["end"] > current and r["start"] < window_end]
+    for period in relevant:
+        is_off_peak = period["value_inc_vat"] < max_rate
+        if is_off_peak and window_start is None:
+            window_start = period["start"]
+        elif not is_off_peak and window_start is not None:
+            windows.append({"start": window_start, "end": period["start"]})
+            window_start = None
+
+    if window_start is not None:
+        windows.append({"start": window_start, "end": relevant[-1]["end"]})
+
+    return windows

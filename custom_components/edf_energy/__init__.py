@@ -52,7 +52,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-ACCOUNT_PLATFORMS = ["sensor", "binary_sensor", "event", "switch", "number", "select", "calendar"]
+ACCOUNT_PLATFORMS = ["sensor", "binary_sensor", "event", "switch", "number", "select", "calendar", "time"]
 
 
 async def async_remove_config_entry_device(hass, config_entry, device_entry) -> bool:

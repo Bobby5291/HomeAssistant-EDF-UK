@@ -12,6 +12,16 @@ from .base import EDFEnergyElectricitySensor
 from ..utils.attributes import dict_to_typed_dict
 from ..utils.conversions import consumption_cost_in_pence, pence_to_pounds_pence
 from ..coordinators.previous_consumption_and_rates import PreviousConsumptionCoordinatorResult
+from ..statistics.consumption import (
+    async_import_consumption_statistics,
+    electricity_consumption_statistic_id,
+    electricity_consumption_statistic_name,
+)
+from ..statistics.cost import (
+    async_import_cost_statistics,
+    electricity_cost_statistic_id,
+    electricity_cost_statistic_name,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -154,6 +164,19 @@ class EDFEnergyPreviousAccumulativeElectricityConsumption(CoordinatorEntity, EDF
                     "consumption": c["consumption"],
                 }, consumption_and_cost["charges"])),
             })
+            from homeassistant.util.dt import now as ha_now
+            from homeassistant.const import UnitOfEnergy as _UOE
+            self._hass.async_create_task(
+                async_import_consumption_statistics(
+                    self._hass,
+                    ha_now(),
+                    electricity_consumption_statistic_id(self._serial_number, self._mpan, self._is_export),
+                    electricity_consumption_statistic_name(self._serial_number, self._mpan, self._is_export),
+                    consumption_data,
+                    rate_data,
+                    _UOE.KILO_WATT_HOUR,
+                )
+            )
         else:
             _LOGGER.debug(f"No consumption data available for '{self._mpan}/{self._serial_number}'")
 
@@ -258,6 +281,17 @@ class EDFEnergyPreviousAccumulativeElectricityCost(CoordinatorEntity, EDFEnergyE
                     "cost": c["cost"],
                 }, consumption_and_cost["charges"])),
             })
+            from homeassistant.util.dt import now as ha_now
+            self._hass.async_create_task(
+                async_import_cost_statistics(
+                    self._hass,
+                    ha_now(),
+                    electricity_cost_statistic_id(self._serial_number, self._mpan, self._is_export),
+                    electricity_cost_statistic_name(self._serial_number, self._mpan, self._is_export),
+                    consumption_data,
+                    rate_data,
+                )
+            )
         else:
             _LOGGER.debug(f"No cost data available for '{self._mpan}/{self._serial_number}'")
 

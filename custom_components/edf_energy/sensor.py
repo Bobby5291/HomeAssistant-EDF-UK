@@ -195,7 +195,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                 _LOGGER.warning(f"Rates coordinator not found for {mpan}/{serial_number} — skipping rate sensors")
                 continue
 
-            # Rate sensors
+            # Rate sensors (always)
             entities.append(EDFEnergyElectricityCurrentRate(hass, rates_coordinator, meter, point))
             entities.append(EDFEnergyElectricityNextRate(hass, rates_coordinator, meter, point))
             entities.append(EDFEnergyElectricityPreviousRate(hass, rates_coordinator, meter, point))

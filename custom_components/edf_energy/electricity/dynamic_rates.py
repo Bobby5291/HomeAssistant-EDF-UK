@@ -3,8 +3,10 @@
 import logging
 from datetime import timedelta
 
-from homeassistant.components.sensor import SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util.dt import now as ha_now, as_local
 
@@ -25,9 +27,9 @@ def _rates_for_date(rates: list, target_date) -> list:
     return [r for r in rates if as_local(r["start"]).date() == target_date]
 
 
-def _classify_by_colour(day_rates: list) -> dict:
+def _classify_by_colour(day_rates: list) -> dict[str, list]:
     """
-    Split a day's half-hour slots into green / amber / red tiers by price tercile.
+    Split day's half-hour slots into green / amber / red tiers by price tercile.
     Lowest third = green, middle third = amber, top third = red.
     """
     result = {COLOUR_GREEN: [], COLOUR_AMBER: [], COLOUR_RED: []}
@@ -38,7 +40,7 @@ def _classify_by_colour(day_rates: list) -> dict:
     n = len(sorted_vals)
     third = max(n // 3, 1)
 
-    colour_map: dict = {}
+    colour_map: dict[tuple, str] = {}
     for i, rate in enumerate(sorted_vals):
         if i < third:
             colour = COLOUR_GREEN
@@ -55,8 +57,8 @@ def _classify_by_colour(day_rates: list) -> dict:
     return result
 
 
-def _colour_for_now(rates: list, now) -> tuple:
-    """Return (colour, slot_dict | None) for the current moment."""
+def _colour_for_now(rates: list, now) -> tuple[str, dict | None]:
+    """Return (colour, slot) for the current moment."""
     today = as_local(now).date()
     classified = _classify_by_colour(_rates_for_date(rates, today))
     for colour, slots in classified.items():
@@ -66,7 +68,7 @@ def _colour_for_now(rates: list, now) -> tuple:
     return COLOUR_UNKNOWN, None
 
 
-def _average_pence(slots: list):
+def _average_pence(slots: list) -> float | None:
     if not slots:
         return None
     return round(sum(s["value_inc_vat"] for s in slots) / len(slots), 4)
@@ -89,7 +91,7 @@ def _window_attrs(slots: list) -> list:
 # ---------------------------------------------------------------------------
 
 class EDFEnergyDynamicCurrentPeriod(CoordinatorEntity, EDFEnergyElectricitySensor):
-    """Shows whether the current half-hour slot is green / amber / red."""
+    """Shows whether the current half-hour is green / amber / red."""
 
     def __init__(self, hass: HomeAssistant, coordinator, meter, point):
         CoordinatorEntity.__init__(self, coordinator)
@@ -106,7 +108,8 @@ class EDFEnergyDynamicCurrentPeriod(CoordinatorEntity, EDFEnergyElectricitySenso
 
     @property
     def icon(self):
-        return "mdi:lightning-bolt-circle"
+        icons = {COLOUR_GREEN: "mdi:circle", COLOUR_AMBER: "mdi:circle", COLOUR_RED: "mdi:circle"}
+        return icons.get(self._colour, "mdi:help-circle")
 
     @property
     def native_value(self):
@@ -136,10 +139,12 @@ class EDFEnergyDynamicCurrentPeriod(CoordinatorEntity, EDFEnergyElectricitySenso
 
 
 # ---------------------------------------------------------------------------
-# Shared base for today / tomorrow colour-tier sensors
+# Base for today/tomorrow colour-tier average sensors
 # ---------------------------------------------------------------------------
 
 class _EDFEnergyDynamicColourRate(CoordinatorEntity, EDFEnergyElectricitySensor):
+    """Base class for a green/amber/red average rate sensor for a specific day."""
+
     _colour: str = COLOUR_GREEN
     _day_offset: int = 0  # 0 = today, 1 = tomorrow
 
@@ -147,6 +152,10 @@ class _EDFEnergyDynamicColourRate(CoordinatorEntity, EDFEnergyElectricitySensor)
         CoordinatorEntity.__init__(self, coordinator)
         EDFEnergyElectricitySensor.__init__(self, hass, meter, point)
         self._state = None
+
+    @property
+    def device_class(self):
+        return None  # price in pence, not a HA energy device-class
 
     @property
     def state_class(self):

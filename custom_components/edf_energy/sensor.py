@@ -201,11 +201,13 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             entities.append(EDFEnergyElectricityPreviousRate(hass, rates_coordinator, meter, point))
             entities.append(EDFEnergyElectricityRatesLastRetrieved(hass, rates_coordinator, meter, point))
 
-            # Detect whether this meter is on a Free Phase Dynamic tariff
-            _active_tariff = get_active_tariff(
-                __import__("homeassistant.util.dt", fromlist=["utcnow"]).utcnow(),
-                point.get("agreements", []),
-            )
+            # Detect tariff type for this meter point
+            from homeassistant.util.dt import utcnow as _utcnow
+            _active_tariff = get_active_tariff(_utcnow(), point.get("agreements", []))
+            _tariff_code = _active_tariff.code.upper() if _active_tariff else ""
+            _is_free_phase_dynamic = (
+            from homeassistant.util.dt import utcnow as _utcnow
+            _active_tariff = get_active_tariff(_utcnow(), point.get("agreements", []))
             _tariff_code = _active_tariff.code.upper() if _active_tariff else ""
             _display_name = ""
             for _agr in point.get("agreements", []):
@@ -213,13 +215,14 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                 if _dn:
                     _display_name = _dn
                     break
-            _DYNAMIC_KW = ("FREEPHASE", "FREE_PHASE", "FREE-PHASE")
+            _DYNAMIC_KEYWORDS = ("FREEPHASE", "FREE_PHASE", "FREE-PHASE")
             _is_free_phase_dynamic = any(
-                kw in _tariff_code or kw in _display_name for kw in _DYNAMIC_KW
+                kw in _tariff_code or kw in _display_name
+                for kw in _DYNAMIC_KEYWORDS
             )
 
             if _is_free_phase_dynamic:
-                # Free Phase Dynamic: colour-coded period sensors replace day/night
+                # Free Phase Dynamic: use colour-coded sensors instead of day/night
                 entities.append(EDFEnergyDynamicCurrentPeriod(hass, rates_coordinator, meter, point))
                 entities.append(EDFEnergyDynamicTodayGreenRate(hass, rates_coordinator, meter, point))
                 entities.append(EDFEnergyDynamicTodayAmberRate(hass, rates_coordinator, meter, point))
@@ -228,10 +231,9 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                 entities.append(EDFEnergyDynamicTomorrowAmberRate(hass, rates_coordinator, meter, point))
                 entities.append(EDFEnergyDynamicTomorrowRedRate(hass, rates_coordinator, meter, point))
             else:
-                # All other tariffs: standard day/night sensors
+                # All other tariffs: standard day/night rate sensors
                 entities.append(EDFEnergyElectricityDayRate(hass, rates_coordinator, meter, point))
                 entities.append(EDFEnergyElectricityNightRate(hass, rates_coordinator, meter, point))
-
             # Standing charge
             if standing_charge_coordinator is not None:
                 entities.append(EDFEnergyElectricityCurrentStandingCharge(hass, standing_charge_coordinator, meter, point))

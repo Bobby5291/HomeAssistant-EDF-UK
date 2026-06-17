@@ -205,10 +205,6 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             from homeassistant.util.dt import utcnow as _utcnow
             _active_tariff = get_active_tariff(_utcnow(), point.get("agreements", []))
             _tariff_code = _active_tariff.code.upper() if _active_tariff else ""
-            _is_free_phase_dynamic = (
-            from homeassistant.util.dt import utcnow as _utcnow
-            _active_tariff = get_active_tariff(_utcnow(), point.get("agreements", []))
-            _tariff_code = _active_tariff.code.upper() if _active_tariff else ""
             _display_name = ""
             for _agr in point.get("agreements", []):
                 _dn = str(_agr.get("display_name", "") or "").upper()

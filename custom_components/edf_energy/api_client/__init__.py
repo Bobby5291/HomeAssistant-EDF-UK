@@ -60,9 +60,13 @@ account_query = '''query {{
     recommendedBalanceAdjustment
     canRenewTariff
     directDebitInstructions {{
-      paymentDay
-      paymentAmount
-      status
+      edges {{
+        node {{
+          paymentDay
+          paymentAmount
+          status
+        }}
+      }}
     }}
 
     electricityAgreements(active: true) {{
@@ -518,9 +522,9 @@ class EDFEnergyApiClient:
             "should_review_payments": account.get("shouldReviewPayments"),
             "recommended_balance_adjustment": account.get("recommendedBalanceAdjustment"),
             "can_renew_tariff": account.get("canRenewTariff"),
-            "direct_debit_payment_day": account["directDebitInstructions"][0].get("paymentDay") if account.get("directDebitInstructions") else None,
-            "direct_debit_amount": account["directDebitInstructions"][0].get("paymentAmount") if account.get("directDebitInstructions") else None,
-            "direct_debit_status": account["directDebitInstructions"][0].get("status") if account.get("directDebitInstructions") else None,
+            "direct_debit_payment_day": account["directDebitInstructions"]["edges"][0]["node"].get("paymentDay") if account.get("directDebitInstructions") and account["directDebitInstructions"].get("edges") else None,
+            "direct_debit_amount": account["directDebitInstructions"]["edges"][0]["node"].get("paymentAmount") if account.get("directDebitInstructions") and account["directDebitInstructions"].get("edges") else None,
+            "direct_debit_status": account["directDebitInstructions"]["edges"][0]["node"].get("status") if account.get("directDebitInstructions") and account["directDebitInstructions"].get("edges") else None,
             "electricity_meter_points": list(map(self.map_electricity_meters,
               account["electricityAgreements"]
                 if "electricityAgreements" in account and account["electricityAgreements"] is not None

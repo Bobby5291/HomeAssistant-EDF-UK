@@ -59,7 +59,7 @@ account_query = '''query {{
     shouldReviewPayments
     recommendedBalanceAdjustment
     canRenewTariff
-    directDebitInstructions {{
+    directDebitInstructions(first: 1) {{
       edges {{
         node {{
           status

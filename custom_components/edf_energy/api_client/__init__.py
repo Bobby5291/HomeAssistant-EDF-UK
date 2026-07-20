@@ -163,12 +163,12 @@ transactions_query = '''query AccountTransactions($accountNumber: String!) {
         node {
           postedDate
           ... on Payment {
-            amounts { grossAmount }
+            amounts { gross }
             isCredit
             title
           }
           ... on Charge {
-            amounts { grossAmount }
+            amounts { gross }
             isCredit
             title
           }
@@ -564,7 +564,7 @@ class EDFEnergyApiClient:
           for edge in edges:
             node = edge.get("node") or {}
             amounts = node.get("amounts") or {}
-            gross = amounts.get("grossAmount")
+            gross = amounts.get("gross")
             results.append({
               "posted_date": node.get("postedDate"),
               "gross_amount": float(gross) if gross is not None else None,

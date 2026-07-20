@@ -178,6 +178,34 @@ transactions_query = '''query AccountTransactions($accountNumber: String!) {
   }
 }'''
 
+electricity_meter_readings_query = '''query ElectricityMeterReadings($accountNumber: String!, $meterId: String!, $last: Int) {
+  electricityMeterReadings(accountNumber: $accountNumber, meterId: $meterId, last: $last) {
+    edges {
+      node {
+        readAt
+        registers {
+          identifier
+          value
+        }
+      }
+    }
+  }
+}'''
+
+gas_meter_readings_query = '''query GasMeterReadings($accountNumber: String!, $meterId: String!, $last: Int) {
+  gasMeterReadings(accountNumber: $accountNumber, meterId: $meterId, last: $last) {
+    edges {
+      node {
+        readAt
+        registers {
+          identifier
+          value
+        }
+      }
+    }
+  }
+}'''
+
 live_consumption_query = '''query SmartMeterTelemetry(
   $deviceId: String!,
   $start: DateTime,
@@ -577,41 +605,39 @@ class EDFEnergyApiClient:
       raise TimeoutException()
     return None
 
-  async def async_get_electricity_meter_readings(self, mpan: str, serial_number: str):
-    """Get the latest electricity meter register readings."""
+  async def async_get_electricity_meter_readings(self, account_id: str, mpan: str, serial_number: str):
+    """Get the latest electricity meter register reading via GraphQL."""
     await self.async_refresh_token()
     try:
       client = self._create_client_session()
-      url = f'{self._base_url}/v1/electricity-meter-points/{mpan}/meters/{serial_number}/readings/?page_size=1'
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {
+        "query": electricity_meter_readings_query,
+        "variables": {"accountNumber": account_id, "meterId": serial_number, "last": 5},
+      }
       headers = {"Authorization": self._graphql_token, "context": "electricity-readings"}
-      async with client.get(url, headers=headers) as response:
-        data = await self.__async_read_response__(response, url)
-        if data is not None and "results" in data and len(data["results"]) > 0:
-          r = data["results"][0]
-          return {
-            "read_at": r.get("interval_end") or r.get("read_at") or r.get("readAt"),
-            "value": float(r["value"]) if r.get("value") is not None else None,
-          }
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url)
+        return self.__extract_latest_meter_reading__(body, "electricityMeterReadings")
     except TimeoutError:
       _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
       raise TimeoutException()
     return None
 
-  async def async_get_gas_meter_readings(self, mprn: str, serial_number: str):
-    """Get the latest gas meter register readings."""
+  async def async_get_gas_meter_readings(self, account_id: str, mprn: str, serial_number: str):
+    """Get the latest gas meter register reading via GraphQL."""
     await self.async_refresh_token()
     try:
       client = self._create_client_session()
-      url = f'{self._base_url}/v1/gas-meter-points/{mprn}/meters/{serial_number}/readings/?page_size=1'
+      url = f'{self._base_url}/v1/graphql/'
+      payload = {
+        "query": gas_meter_readings_query,
+        "variables": {"accountNumber": account_id, "meterId": serial_number, "last": 5},
+      }
       headers = {"Authorization": self._graphql_token, "context": "gas-readings"}
-      async with client.get(url, headers=headers) as response:
-        data = await self.__async_read_response__(response, url)
-        if data is not None and "results" in data and len(data["results"]) > 0:
-          r = data["results"][0]
-          return {
-            "read_at": r.get("interval_end") or r.get("read_at") or r.get("readAt"),
-            "value": float(r["value"]) if r.get("value") is not None else None,
-          }
+      async with client.post(url, json=payload, headers=headers) as response:
+        body = await self.__async_read_response__(response, url)
+        return self.__extract_latest_meter_reading__(body, "gasMeterReadings")
     except TimeoutError:
       _LOGGER.warning(f'Failed to connect. Timeout of {self._timeout} exceeded.')
       raise TimeoutException()
@@ -1140,6 +1166,30 @@ class EDFEnergyApiClient:
       "start": as_utc(parse_datetime(item["interval_start"])),
       "end": as_utc(parse_datetime(item["interval_end"]))
     }
+
+  def __extract_latest_meter_reading__(self, body, field_name: str):
+    """Pick the most recent reading from a *MeterReadings GraphQL connection response."""
+    if body is None or "data" not in body or body["data"].get(field_name) is None:
+      return None
+
+    edges = body["data"][field_name].get("edges") or []
+    readings = []
+    for edge in edges:
+      node = edge.get("node") or {}
+      read_at = node.get("readAt")
+      registers = node.get("registers") or []
+      if read_at is None or len(registers) == 0:
+        continue
+      value = registers[0].get("value")
+      if value is None:
+        continue
+      readings.append({"read_at": read_at, "value": float(value)})
+
+    if not readings:
+      return None
+
+    readings.sort(key=lambda r: parse_datetime(r["read_at"]))
+    return readings[-1]
 
   async def __async_read_response__(self, response, url, ignore_errors=False, accepted_error_codes=[]):
     """Reads the response, logging any errors"""

@@ -13,7 +13,7 @@ from ..const import (
     DOMAIN,
     REFRESH_RATE_IN_MINUTES_ACCOUNT,
 )
-from ..api_client import ApiException, EDFEnergyApiClient
+from ..api_client import ApiException, AuthenticationException, EDFEnergyApiClient
 from . import BaseCoordinatorResult
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ async def async_refresh_annual_electricity_consumption_data(
         return existing
 
     raised_exception = None
+    is_not_yet_eligible = False
     try:
         data = await client.async_get_extended_electricity_consumption(target_mpan)
         if data is not None:
@@ -58,7 +59,15 @@ async def async_refresh_annual_electricity_consumption_data(
         if not isinstance(e, ApiException):
             raise
         raised_exception = e
-        _LOGGER.debug(f'Failed to retrieve annual electricity consumption for {target_mpan}')
+        is_not_yet_eligible = isinstance(e, AuthenticationException)
+        if is_not_yet_eligible:
+            _LOGGER.debug(
+                f"Annual electricity consumption for {target_mpan} is not available "
+                "(AUTHORIZATION/KT-CT-1111) — this normally means the account hasn't "
+                "been with EDF long enough yet for an estimate to be calculated."
+            )
+        else:
+            _LOGGER.debug(f'Failed to retrieve annual electricity consumption for {target_mpan}')
 
     if existing is not None:
         result = AnnualElectricityConsumptionCoordinatorResult(
@@ -70,11 +79,12 @@ async def async_refresh_annual_electricity_consumption_data(
             existing.last_retrieved,
             last_error=raised_exception,
         )
-        if result.request_attempts == 2:
+        if result.request_attempts == 2 and not is_not_yet_eligible:
             _LOGGER.warning(f"Failed to retrieve annual electricity consumption for {target_mpan} — using cached data.")
         return result
 
-    _LOGGER.warning(f"Failed to retrieve annual electricity consumption for {target_mpan}.")
+    if not is_not_yet_eligible:
+        _LOGGER.warning(f"Failed to retrieve annual electricity consumption for {target_mpan}.")
     return AnnualElectricityConsumptionCoordinatorResult(
         current - timedelta(minutes=REFRESH_RATE_IN_MINUTES_ACCOUNT),
         2, None, None, None,

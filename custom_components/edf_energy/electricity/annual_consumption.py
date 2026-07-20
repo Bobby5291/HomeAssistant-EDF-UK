@@ -31,7 +31,7 @@ class EDFEnergyElectricityAnnualConsumptionBase(CoordinatorEntity, RestoreSensor
 
     @property
     def state_class(self):
-        return SensorStateClass.MEASUREMENT
+        return SensorStateClass.TOTAL
 
     @property
     def device_class(self):

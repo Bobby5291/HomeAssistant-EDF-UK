@@ -35,6 +35,7 @@ class ElectricityMeterReadingsCoordinatorResult(BaseCoordinatorResult):
 async def async_refresh_electricity_meter_readings_data(
     current: datetime,
     client: EDFEnergyApiClient,
+    account_id: str,
     target_mpan: str,
     target_serial_number: str,
     existing: ElectricityMeterReadingsCoordinatorResult | None,
@@ -45,7 +46,7 @@ async def async_refresh_electricity_meter_readings_data(
 
     raised_exception = None
     try:
-        data = await client.async_get_electricity_meter_readings(target_mpan, target_serial_number)
+        data = await client.async_get_electricity_meter_readings(account_id, target_mpan, target_serial_number)
         if data is not None:
             return ElectricityMeterReadingsCoordinatorResult(
                 current, 1, data.get("read_at"), data.get("value")
@@ -82,7 +83,7 @@ async def async_setup_electricity_meter_readings_coordinator(
         current = now()
         existing = hass.data[DOMAIN][account_id].get(key)
         result = await async_refresh_electricity_meter_readings_data(
-            current, client, target_mpan, target_serial_number, existing
+            current, client, account_id, target_mpan, target_serial_number, existing
         )
         hass.data[DOMAIN][account_id][key] = result
         return result

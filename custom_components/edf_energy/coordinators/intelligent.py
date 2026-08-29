@@ -1,3 +1,4 @@
+@@ -1,137 +1,136 @@
 # Bobby5291 2026 — EDF Energy / Kraken API — Intelligent / EV coordinator
 
 import logging
@@ -50,11 +51,15 @@ class IntelligentCoordinatorResult(BaseCoordinatorResult):
 async def async_setup_intelligent_coordinator(hass, account_id: str, client: EDFEnergyApiClient, device_id: str):
     """Create and register the intelligent coordinator for an EV device."""
 
+    last_result: IntelligentCoordinatorResult | None = None
+
     async def async_update_data():
+        nonlocal last_result
         current = now()
         existing: IntelligentCoordinatorResult | None = hass.data[DOMAIN][account_id].get(
             DATA_INTELLIGENT_COORDINATOR_KEY.format(device_id)
         )
+        existing: IntelligentCoordinatorResult | None = last_result
 
         if existing is not None and current < existing.next_refresh:
             return existing
@@ -89,6 +94,7 @@ async def async_setup_intelligent_coordinator(hass, account_id: str, client: EDF
                 last_retrieved=current,
             )
             hass.data[DOMAIN][account_id][DATA_INTELLIGENT_COORDINATOR_KEY.format(device_id)] = result
+            last_result = result
             return result
 
         except Exception as e:

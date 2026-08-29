@@ -9,7 +9,6 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.util.dt import utcnow
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 
-
 from .api_client import ApiException, AuthenticationException, EDFEnergyApiClient
 from .coordinators.intelligent import async_setup_intelligent_coordinator
 from .coordinators.account import AccountCoordinatorResult, async_setup_account_info_coordinator

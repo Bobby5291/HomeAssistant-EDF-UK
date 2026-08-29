@@ -22,6 +22,7 @@ from .coordinators.annual_gas_consumption import async_setup_annual_gas_consumpt
 from .coordinators.electricity_meter_readings import async_setup_electricity_meter_readings_coordinator
 from .coordinators.gas_meter_readings import async_setup_gas_meter_readings_coordinator
 from .coordinators.account_transactions import async_setup_account_transactions_coordinator
+from .coordinators.intelligent import async_setup_intelligent_coordinator
 from .coordinators.consumption_cost_tracker import (
     async_setup_electricity_cost_tracker_coordinator,
     async_setup_gas_cost_tracker_coordinator,

@@ -357,6 +357,11 @@ class EDFEnergyApiClient:
 
     self._session = None
 
+  @property
+  def auth_token_expiry(self):
+    """Datetime the current GraphQL auth token expires, or None if not yet authenticated."""
+    return self._graphql_expiration
+
   async def async_close(self):
     with self._session_lock:
       if self._session is not None:

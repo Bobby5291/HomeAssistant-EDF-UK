@@ -83,7 +83,7 @@ from .account.contract import (
     EDFEnergyGasContractEnd,
 )
 from .account.payment import EDFEnergyDirectDebitAmount, EDFEnergyLastPayment
-from .account.diagnostics import EDFEnergyAccountLastRetrieved
+from .account.diagnostics import EDFEnergyAccountLastRetrieved, EDFEnergyAuthTokenExpiry
 from .electricity.meter_reading import EDFEnergyElectricityMeterReading
 from .gas.meter_reading import EDFEnergyGasMeterReading
 from .intelligent.sensors import (
@@ -128,6 +128,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     account_result = hass.data[DOMAIN][account_id][DATA_ACCOUNT]
     account_info = account_result.account if account_result is not None else None
     account_coordinator = hass.data[DOMAIN][account_id][DATA_ACCOUNT_COORDINATOR]
+    client = hass.data[DOMAIN][account_id][DATA_CLIENT]
 
     if account_info is None:
         _LOGGER.error(f"No account info available for {account_id} — sensors will not be created")
@@ -144,6 +145,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     entities.append(EDFEnergyRecommendedBalanceAdjustment(hass, account_coordinator, account_id))
     entities.append(EDFEnergyDirectDebitAmount(hass, account_coordinator, account_id))
     entities.append(EDFEnergyAccountLastRetrieved(hass, account_coordinator, account_id))
+    entities.append(EDFEnergyAuthTokenExpiry(hass, account_coordinator, account_id, client))
 
     # Last payment (from transactions coordinator)
     transactions_coordinator_key = DATA_ACCOUNT_TRANSACTIONS_COORDINATOR_KEY.format(account_id)

@@ -10,6 +10,7 @@ from homeassistant.components.sensor import RestoreSensor, SensorDeviceClass
 
 from .balance import EDFEnergyAccountSensor
 from ..coordinators.account import AccountCoordinatorResult
+from ..api_client import EDFEnergyApiClient
 from ..utils.attributes import dict_to_typed_dict
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,3 +75,63 @@ class EDFEnergyAccountLastRetrieved(CoordinatorEntity, EDFEnergyAccountSensor, R
         if state is not None and last_sensor_state is not None and self._state is None:
             self._state = None if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN) else last_sensor_state.native_value
             _LOGGER.debug(f'Restored EDFEnergyAccountLastRetrieved state: {self._state}')
+
+
+class EDFEnergyAuthTokenExpiry(CoordinatorEntity, EDFEnergyAccountSensor, RestoreSensor):
+    """Diagnostic timestamp: when the current EDF auth token expires.
+
+    Piggybacks on the account coordinator purely for its refresh cadence — the
+    value itself is read live from the API client, not from coordinator data.
+    """
+
+    def __init__(self, hass: HomeAssistant, coordinator, account_id: str, client: EDFEnergyApiClient):
+        CoordinatorEntity.__init__(self, coordinator)
+        EDFEnergyAccountSensor.__init__(self, hass, account_id)
+        self._client = client
+        self._state = None
+
+    @property
+    def unique_id(self):
+        return f"edf_energy_{self._account_id}_auth_token_expiry"
+
+    @property
+    def name(self):
+        return f"EDF Auth Token Expiry ({self._account_id})"
+
+    @property
+    def entity_category(self):
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def entity_registry_enabled_default(self) -> bool:
+        return False
+
+    @property
+    def device_class(self):
+        return SensorDeviceClass.TIMESTAMP
+
+    @property
+    def icon(self):
+        return "mdi:clock-alert-outline"
+
+    @property
+    def native_value(self):
+        return self._state
+
+    @property
+    def extra_state_attributes(self):
+        return self._attributes
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._state = self._client.auth_token_expiry
+        self._attributes = dict_to_typed_dict(self._attributes)
+        super()._handle_coordinator_update()
+
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        state = await self.async_get_last_state()
+        last_sensor_state = await self.async_get_last_sensor_data()
+        if state is not None and last_sensor_state is not None and self._state is None:
+            self._state = None if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN) else last_sensor_state.native_value
+            _LOGGER.debug(f'Restored EDFEnergyAuthTokenExpiry state: {self._state}')

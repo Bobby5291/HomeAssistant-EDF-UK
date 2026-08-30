@@ -18,21 +18,21 @@ user_agent_value = "bobby5291-ha-edf-energy"
 
 EDF_BASE_URL = "https://api.edfgb-kraken.energy"
 
-api_token_query = '''mutation {{
-  obtainKrakenToken(input: {{ email: "{email}", password: "{password}" }}) {{
+api_token_query = '''mutation ObtainKrakenToken($email: String!, $password: String!) {
+  obtainKrakenToken(input: { email: $email, password: $password }) {
     token
     refreshToken
     refreshExpiresIn
-  }}
-}}'''
+  }
+}'''
 
-api_token_refresh_query = '''mutation {{
-  obtainKrakenToken(input: {{ refreshToken: "{refresh_token}" }}) {{
+api_token_refresh_query = '''mutation ObtainKrakenTokenFromRefreshToken($refreshToken: String!) {
+  obtainKrakenToken(input: { refreshToken: $refreshToken }) {
     token
     refreshToken
     refreshExpiresIn
-  }}
-}}'''
+  }
+}'''
 
 extended_electricity_consumption_query = '''query ExtendedAnnualElectricityConsumption($mpan: String!) {
   extendedAnnualElectricityConsumption(mpan: $mpan) {
@@ -411,11 +411,11 @@ class EDFEnergyApiClient:
   async def __async_fetch_token(self):
     client = self._create_client_session()
     url = f'{self._base_url}/v1/graphql/'
-    payload = {
-      "query": api_token_query.format(email=self._email, password=self._password)
-        if self._graphql_refresh_token is None
-        else api_token_refresh_query.format(refresh_token=self._graphql_refresh_token)
-    }
+    payload = (
+      {"query": api_token_query, "variables": {"email": self._email, "password": self._password}}
+      if self._graphql_refresh_token is None
+      else {"query": api_token_refresh_query, "variables": {"refreshToken": self._graphql_refresh_token}}
+    )
     headers = { "context": "refresh-token" }
     async with client.post(url, headers=headers, json=payload) as token_response:
       token_response_body = await self.__async_read_response__(token_response, url)

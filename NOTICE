@@ -1,0 +1,89 @@
+HomeAssistant-EDF-UK
+Copyright (c) 2026 Bobby5291
+
+This project is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+================================================================================
+Third-Party Notices
+================================================================================
+
+Portions of this project are derived from HomeAssistant-OctopusEnergy by
+BottlecapDave (David Kendall), which is licensed under the MIT License:
+
+    https://github.com/BottlecapDave/HomeAssistant-OctopusEnergy
+
+The following files in this repository originated as modified copies of code
+from that project, adapted for EDF Energy's Kraken API endpoint:
+
+  custom_components/edf_energy/__init__.py
+  custom_components/edf_energy/api_client/__init__.py
+  custom_components/edf_energy/binary_sensor.py
+  custom_components/edf_energy/config_flow.py
+  custom_components/edf_energy/const.py
+  custom_components/edf_energy/coordinators/__init__.py
+  custom_components/edf_energy/coordinators/account.py
+  custom_components/edf_energy/coordinators/current_consumption.py
+  custom_components/edf_energy/coordinators/electricity_rates.py
+  custom_components/edf_energy/coordinators/electricity_standing_charges.py
+  custom_components/edf_energy/coordinators/gas_rates.py
+  custom_components/edf_energy/coordinators/gas_standing_charges.py
+  custom_components/edf_energy/coordinators/previous_consumption_and_rates.py
+  custom_components/edf_energy/electricity/__init__.py
+  custom_components/edf_energy/electricity/base.py
+  custom_components/edf_energy/electricity/current_rate.py
+  custom_components/edf_energy/electricity/current_sensors.py
+  custom_components/edf_energy/electricity/next_rate.py
+  custom_components/edf_energy/electricity/previous_consumption.py
+  custom_components/edf_energy/electricity/previous_rate.py
+  custom_components/edf_energy/electricity/rates_events.py
+  custom_components/edf_energy/electricity/standing_charge.py
+  custom_components/edf_energy/event.py
+  custom_components/edf_energy/gas/__init__.py
+  custom_components/edf_energy/gas/base.py
+  custom_components/edf_energy/gas/current_rate.py
+  custom_components/edf_energy/gas/next_rate.py
+  custom_components/edf_energy/gas/previous_consumption.py
+  custom_components/edf_energy/gas/previous_rate.py
+  custom_components/edf_energy/gas/standing_charge.py
+  custom_components/edf_energy/sensor.py
+  custom_components/edf_energy/storage/account.py
+  custom_components/edf_energy/utils/__init__.py
+  custom_components/edf_energy/utils/attributes.py
+  custom_components/edf_energy/utils/consumption.py
+  custom_components/edf_energy/utils/conversions.py
+  custom_components/edf_energy/utils/error.py
+  custom_components/edf_energy/utils/rate_information.py
+  custom_components/edf_energy/utils/requests.py
+
+These files carry an inline attribution comment identifying them as modified
+from the upstream project. In accordance with the MIT License's requirement
+that the original copyright notice and permission notice be included in all
+copies or substantial portions of the software, that notice is reproduced
+below in full.
+
+All other files in this repository are original works and are licensed
+solely under the Apache License, Version 2.0.
+
+--------------------------------------------------------------------------------
+The MIT License (MIT)
+
+Copyright (c) 2021 David Kendall
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+--------------------------------------------------------------------------------

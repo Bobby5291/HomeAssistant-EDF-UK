@@ -5,10 +5,10 @@
   "codeowners": ["@Bobby5291"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/Bobby5291/ha-edf-energy",
+  "documentation": "https://github.com/Bobby5291/HomeAssistant-EDF-UK",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/Bobby5291/ha-edf-energy/issues",
+  "issue_tracker": "https://github.com/Bobby5291/HomeAssistant-EDF-UK/issues",
   "requirements": ["aiohttp>=3.8.1"],
   "version": "1.9.8"
 }
